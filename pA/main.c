@@ -16,8 +16,10 @@ double SQRTS = 8.16; // TeV
 double A = 208.;   // Pb
 double alpha_s = 0.5; // coupling
 
-FILE *in;
+//FILE *in;
 FILE *out;
+void R_scan_y(double) ;// pT fixed
+void R_scan_pT(double);// y  fixed
 
 #define SQR(x) x*x
 #define SGN(x) (double) ((x>0)-(x<0))
@@ -25,7 +27,7 @@ FILE *out;
 /*--------------------------------------------------------------------*/
 
 #include <gsl/gsl_integration.h>
-size_t calls=1e5; double tol=1e-7;
+size_t calls=1e5; double tol=1e-2;
 
 void integrator(a,b,func,params,res,err)
   double a, b;
@@ -93,6 +95,7 @@ void RpA_FCEL(Fc,pT,y,sig,params,res)
   };
 
   double out[3] = {Q2A/M2,Q2p/M2,fabs(Fc)*as};
+  //printf("test: %.2f\n",pT);
   integrator(0.,x_max,_integrand,out,&res_outer,&err);
   *res = res_outer ;
 
@@ -171,38 +174,13 @@ void R_limits(double pT, double y, double *R_ave, double *R_min, double *R_max) 
 
 
 /*--------------------------------------------------------------------*/
+
 int main() {
-  double R, Rmin, Rmax;
 
-  char *prefix=(char*)"R_pT6GeV";
-  char  suffix[20];
-  char  filename[50];
-
-  // filename
-  strcpy(filename,prefix);
-  sprintf(suffix,".dat");
-  strcat(filename,suffix);
-  out=fopen(filename,"w");
-  //fprintf(out,"# R_pPb, z=%g, alpha=%g\n",S[2],alpha_s);
-  fprintf(out,"# columns: y, R_ave, R_min, R_max\n");
-
-  double frac;
-  double y=-6.;
-  double pT=6.;
-
-  while (y<6.) {
-    frac = (y+6.)/12.;
-
-    R_limits(pT,y,&R,&Rmin,&Rmax);
-
-    //printf(" y = %.5e , [%2.2f%]\n", y , 100.*frac); 
-    fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", y, R, Rmin, Rmax );
-    y += .1;
-  }
-
-  printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);
-
-  return 0;
+   R_scan_pT(0.);
+   R_scan_pT(2.);
+   R_scan_pT(4.);
+   return 0;
 }
 
 /*--------------------------------------------------------------------*/
@@ -252,3 +230,45 @@ int oldmain() {
 
   return 0;
 }
+
+void R_scan_pT(double y) {
+  int N_pT;
+  double R, Rmin, Rmax, pT, pT_min, pT_max, step;
+
+  char *prefix=(char*)"out/RpA_";
+  char  suffix[20];
+  char  filename[50];
+
+  // filename
+  strcpy(filename,prefix);
+  sprintf(suffix,"{rs=%.2f,y=%.1f}.dat",SQRTS,y);
+  strcat(filename,suffix);
+  out=fopen(filename,"w");
+  fprintf(out,"# R_pA, A=%.1f, alpha=%g\n",A,alpha_s);
+  fprintf(out,"# columns: y, R_ave, R_min, R_max\n");
+
+  // Here are some parameters that can be changed:
+  N_pT=50; 
+  pT_min=1.;
+  pT_max=10.;
+  // don't change anything after that.
+
+  step=(pT_max-pT_min)/((double) N_pT-1);
+  pT=pT_min;
+
+  printf(" Settings: y=%g, with pT_min=%g, pT_max=%g\n",y,pT_min,pT_max); 
+  double frac;
+
+  for (int i=0; i<N_pT; i++) {
+    frac = (double)i/(double)(N_pT-1);
+
+    R_limits(pT,y,&R,&Rmin,&Rmax);
+
+    printf(" y = %.5e , [%2.2f%]\n", y , 100.*frac); 
+    fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", pT, R, Rmin, Rmax );
+    pT += step;
+  }
+
+  printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);
+}
+
