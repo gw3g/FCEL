@@ -18,6 +18,7 @@ double alpha_s = 0.5; // coupling
 
 //FILE *in;
 FILE *out;
+void R_reps(double);   // pT input
 void R_scan_y(double) ;// pT fixed
 void R_scan_pT(double);// y  fixed
 
@@ -105,8 +106,9 @@ void RpA_FCEL(Fc,pT,y,sig,params,res)
 typedef double (*rho)();
 
 // colour-bilities: g, g -> g, g
-/*
-double rho_27(double xi, double *Fc) { *Fc = 2.*(Nc+1.);
+
+#define C27  2.*(Nc+1.)
+double rho_27(double xi, double *Fc) { *Fc = C27;
   double xibar = 1.-xi,
          denom = 1.+SQR(xi)+SQR(xibar); denom*=(Nc+1.);
   return .5*(Nc+3.)/denom;
@@ -117,49 +119,52 @@ double rho_1(double xi, double *Fc) { *Fc = 0.;
   return rho_27(xi,&dud)*4./( (Nc+3.)*(Nc-1.) );
 }
 
-double rho_8(double xi, double *Fc) { *Fc = Nc;
+double rho_8(double xi, double *Fc) { *Fc = Ca;
   double dud = 0;
   return 1.-rho_27(xi,&dud)*2.*(Nc+1.)/(Nc+3.);
 }
 // */
 // colour-bilities: q, g -> q, g
 /*
-double rho_15(double xi, double *Fc) { *Fc = 0;
+#define C15  .5*(Nc+1.)*(3.*Nc-1.)/Nc
+#define C6   .5*(Nc-1.)*(3.*Nc+1.)/Nc
+
+double rho_15(double xi, double *Fc) { *Fc = Cf + C15 - Ca;
   double xibar = 1.-xi,
          denom = Cf*SQR(xi)+Nc*xibar; denom*=4.*(Nc+1.);
   return Nc*(Nc+2.)/denom;
 }
 
-double rho_6(double xi, double *Fc) { *Fc = 0;
+double rho_6(double xi, double *Fc) { *Fc = Cf + C6 - Ca;
   double dud   = 0,
          denom = (Nc-1.)*(Nc+2.);
   return rho_15(xi,&dud)*(Nc+1.)*(Nc-2.)/denom;
 }
 
-double rho_3(double xi, double *Fc) { *Fc = 0;
+double rho_3(double xi, double *Fc) { *Fc = 2.*Cf - Ca ;
   double dud   = 0,
          denom = (Nc+2.)*Nc;
   return rho_15(xi,&dud)*4.*(Nc+1.)*Cf*SQR(xi-.5*Nc/Cf)/denom;
 }
 // */
 // colour-bilities: g, g -> q, \bar{q}
-
+/*
 double rho_1(double xi, double *Fc) { *Fc = 0;
   double xibar = 1.-xi,
          denom = SQR(Nc*xi) + SQR(Nc*xibar) - 1.;
   return 1./denom;
 }
 
-double rho_8(double xi, double *Fc) { *Fc = 0;
+double rho_8(double xi, double *Fc) { *Fc = Ca;
   double dud   = 0;
   return 1.-rho_1(xi,&dud);
 }
 // */
 
-#define IRREPS 2
-//rho reps[IRREPS] = {&rho_1,&rho_8,&rho_27};
+#define IRREPS 3
+rho reps[IRREPS] = {&rho_1,&rho_8,&rho_27};
 //rho reps[IRREPS] = {&rho_3,&rho_6,&rho_15};
-rho reps[IRREPS] = {&rho_1,&rho_8};
+//rho reps[IRREPS] = {&rho_1,&rho_8};
 
 /*--------------------------------------------------------------------*/
 // Hessian method
@@ -213,58 +218,67 @@ void R_limits(double pT, double y, double *R_ave, double *R_min, double *R_max) 
 
 int main() {
 
-   R_scan_pT(0.);
-   R_scan_pT(2.);
-   R_scan_pT(4.);
+   R_reps(2.);
+   //R_scan_pT(0.);
+   //R_scan_pT(2.);
+   //R_scan_pT(4.);
    return 0;
 }
 
 /*--------------------------------------------------------------------*/
-int R_reps() {
+void R_reps(double pT) {
+  int N_y;
+  double y, y_min, y_max, step;
 
-  double R[3]; // 1;8;27
-  double xi=S[1], prob;
+  double xi=S[1], R[IRREPS];
+  double prob;
   double res;
   double Fc;
 
-  // starting params
-  //RpA_FCEL(3.,2.,-6.,dsig,params,&res);
-  //printf ("res = % .10f\n", res);
-
-  char *prefix=(char*)"R_gg_gg_pT2GeV";
+  char *prefix=(char*)"out/R_pT";
   char  suffix[20];
   char  filename[50];
 
   // filename
   strcpy(filename,prefix);
-  sprintf(suffix,".dat");
+  sprintf(suffix,"%gGeV.dat",pT);
   strcat(filename,suffix);
   out=fopen(filename,"w");
   fprintf(out,"# R_pPb, z=%g, alpha=%g\n",S[2],alpha_s);
-  fprintf(out,"# columns: y, R(1), R(8), R(27), R_ave\n");
+  fprintf(out,"# columns: y, {R1,R2,...}, R_ave\n");
 
+  // Here are some parameters that can be changed:
+  N_y=50; 
+  y_min=-6.;
+  y_max=+6.;
+  // don't change anything after that.
+
+  step=(y_max-y_min)/((double) N_y-1);
+  y=y_min;
+
+  printf(" Settings: pT=%g, with y_min=%g, y_max=%g\n",pT,y_min,y_max); 
   double frac;
-  double y=-6.;
-  double pT=2.;
 
-  while (y<6.) {
-    frac = (y+6.)/12.;
+  for (int i=0; i<N_y; i++) {
+    frac = (double)i/(double)(N_y-1);
     res = 0.;
 
-    for (int i=0;i<3;i++) {
-      prob = reps[i](xi,&Fc);
-      RpA_FCEL(Fc,pT,y,dsig,S,&R[i]);
-      res+= prob*R[i];
+    fprintf( out, "%.8e", y);
+
+    for (int j=0;j<IRREPS;j++) {
+      prob = reps[j](xi,&Fc);
+      RpA_FCEL(Fc,pT,y,dsig,S,&R[j]);
+      res+= prob*R[j];
+      fprintf( out, "   %.8e", R[j]);
     }
 
     printf(" y = %.5e , [%2.2f%]\n", y , 100.*frac); 
-    fprintf( out, "%.8e   %.8e   %.8e   %.8e   %.8e\n", y, R[0], R[1], R[2], res );
-    y += .1;
+    fprintf( out, "   %.8e\n", res );
+    y += step;
   }
 
   printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);
 
-  return 0;
 }
 
 void R_scan_pT(double y) {
