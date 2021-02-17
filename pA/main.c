@@ -220,7 +220,8 @@ int main() {
 
    R_reps(2.);
    //R_scan_pT(0.);
-   //R_scan_pT(2.);
+   R_scan_pT(-2.);
+   R_scan_y(2.);
    //R_scan_pT(4.);
    return 0;
 }
@@ -281,6 +282,48 @@ void R_reps(double pT) {
 
 }
 
+void R_scan_y(double pT) {
+  int N_y;
+  double R, Rmin, Rmax, y, y_min, y_max, step;
+
+  char *prefix=(char*)"out/RpA_";
+  char  suffix[20];
+  char  filename[50];
+
+  // filename
+  strcpy(filename,prefix);
+  sprintf(suffix,"{rs=%.2f,pT=%.1f}.dat",SQRTS,pT);
+  strcat(filename,suffix);
+  out=fopen(filename,"w");
+  fprintf(out,"# R_pA, A=%.1f, alpha=%g\n",A,alpha_s);
+  fprintf(out,"# columns: y, R_ave, R_min, R_max\n");
+
+  // Here are some parameters that can be changed:
+  N_y=50; 
+  y_min=-2.;
+  y_max=+2.;
+  // don't change anything after that.
+
+  step=(y_max-y_min)/((double) N_y-1);
+  y=y_min;
+
+  printf(" Settings: pT=%g, with y_min=%g, y_max=%g\n",pT,y_min,y_max); 
+  double frac;
+
+  for (int i=0; i<N_y; i++) {
+    frac = (double)i/(double)(N_y-1);
+
+    R_limits(pT,y,&R,&Rmin,&Rmax);
+
+    printf(" y = %.5e , [%2.2f%]\n", y , 100.*frac); 
+    fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", y, R, Rmin, Rmax );
+    y += step;
+  }
+
+  printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);
+}
+
+
 void R_scan_pT(double y) {
   int N_pT;
   double R, Rmin, Rmax, pT, pT_min, pT_max, step;
@@ -295,7 +338,7 @@ void R_scan_pT(double y) {
   strcat(filename,suffix);
   out=fopen(filename,"w");
   fprintf(out,"# R_pA, A=%.1f, alpha=%g\n",A,alpha_s);
-  fprintf(out,"# columns: y, R_ave, R_min, R_max\n");
+  fprintf(out,"# columns: pT, R_ave, R_min, R_max\n");
 
   // Here are some parameters that can be changed:
   N_pT=50; 
@@ -314,7 +357,7 @@ void R_scan_pT(double y) {
 
     R_limits(pT,y,&R,&Rmin,&Rmax);
 
-    printf(" y = %.5e , [%2.2f%]\n", y , 100.*frac); 
+    printf(" pT = %.5e , [%2.2f%]\n", y , 100.*frac); 
     fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", pT, R, Rmin, Rmax );
     pT += step;
   }
