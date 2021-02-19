@@ -5,6 +5,9 @@
  *--------------------------------------------------------------------*/
 
 double dsig_1(double E, double xF) { // scaling function
-  return pow(1.-xF,7.)/xF;
+  return pow(1.-xF,6.)/xF;
 }
 
+double dsig_2(double E, double xF) { // MRST-1998
+  return pow(1.-xF,6.)*(1.-2.8*sqrt(xF)+2.8*xF)/xF;
+}
