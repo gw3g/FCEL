@@ -94,26 +94,35 @@ void Zpc_FCEL(Fc,E,dsig,phi,params,res)
 }
 
 /*--------------------------------------------------------------------*/
-// 1 -> 2 kinematics
-void ymT_to_x1x2(double y,double pT,double *in, double *out) {
-  double s       = ((double *)in)[0];
-  double xi      = ((double *)in)[1];
-}
-void x1x2_to_ymT(double x1,double x2,double *out) {
-}
-
-/*--------------------------------------------------------------------*/
-// colour-bilities: g, g -> c, cbar
-
+// colour-bilities: g, g -> q, \bar{q}
+/*
 double rho_1(double xi, double *Fc) { *Fc = 0;
   double xibar = 1.-xi,
-         denom = SQR(Nc)*( SQR(xi)+SQR(xibar) ) - 1.;
+         denom = SQR(Nc*xi) + SQR(Nc*xibar) - 1.;
   return 1./denom;
 }
 
-double rho_8(double xi, double *Fc) { *Fc = Nc;
-  double dud = 0;
+double rho_8(double xi, double *Fc) { *Fc = Ca;
+  double dud   = 0;
   return 1.-rho_1(xi,&dud);
+}
+// */
+
+//#define IRREPS 2
+//rho reps[IRREPS] = {&rho_1,&rho_8};
+
+double Z_sum_(double E, void *params) {
+  double Fc, temp, prob, res=.0,
+         xi  = ((double *)params)[1];
+
+  for (int i=0;i<IRREPS;i++) {
+    prob = reps[i](xi,&Fc);
+    //printf("%g\n",Fc);
+    Zpc_FCEL(Fc,E,dsig_1,phiN,params,&res);
+    res+= prob*temp;
+  };
+
+  return res;
 }
 
 /*--------------------------------------------------------------------*/
@@ -152,30 +161,33 @@ int main() {
     R1=0.; R2=0.; R3=0.;
 
     params[1]=.3;
-    prob = rho_1(xi,&Fc);
-    Zpc_FCEL(Fc,E,dsig_1,phiN,params,&res);
-    R1+= prob*res;
-    prob = rho_8(xi,&Fc);
-    Zpc_FCEL(Fc,E,dsig_1,phiN,params,&res);
-    R1 = res;
+    //prob = rho_1(xi,&Fc);
+    //Zpc_FCEL(Fc,E,dsig_1,phiN,params,&res);
+    //R1+= prob*res;
+    //prob = rho_8(xi,&Fc);
+    //Zpc_FCEL(Fc,E,dsig_1,phiN,params,&res);
+    //R1 = res;
+    R1 = Z_sum_(E,params);
 
     //g=2.5;
     params[1]=.4;
-    prob = rho_1(xi,&Fc);
-    Zpc_FCEL(Fc,E,dsig_1,phiN,params,&res);
-    R2+= prob*res;
-    prob = rho_8(xi,&Fc);
-    Zpc_FCEL(Fc,E,dsig_1,phiN,params,&res);
-    R2 = res;
+    //prob = rho_1(xi,&Fc);
+    //Zpc_FCEL(Fc,E,dsig_1,phiN,params,&res);
+    //R2+= prob*res;
+    //prob = rho_8(xi,&Fc);
+    //Zpc_FCEL(Fc,E,dsig_1,phiN,params,&res);
+    //R2 = res;
+    R2 = Z_sum_(E,params);
 
     //g=3.;
     params[1]=.5;
-    prob = rho_1(xi,&Fc);
-    Zpc_FCEL(Fc,E,dsig_1,phiN,params,&res);
-    R3+= prob*res;
-    prob = rho_8(xi,&Fc);
-    Zpc_FCEL(Fc,E,dsig_1,phiN,params,&res);
-    R3 = res;
+    //prob = rho_1(xi,&Fc);
+    //Zpc_FCEL(Fc,E,dsig_1,phiN,params,&res);
+    //R3+= prob*res;
+    //prob = rho_8(xi,&Fc);
+    //Zpc_FCEL(Fc,E,dsig_1,phiN,params,&res);
+    //R3 = res;
+    R3 = Z_sum_(E,params);
 
     printf(" Qs/M = %.5e , [%2.2f%]\n", params[1] , 100.*frac); 
     fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", g, R1, R2, R3 );
@@ -188,3 +200,47 @@ int main() {
 
   return 0;
 }
+
+/*--------------------------------------------------------------------*/
+
+void R_scan_pT(double y) {
+  int N_pT;
+  double R, Rmin, Rmax, pT, pT_min, pT_max, step;
+
+  char *prefix=(char*)"out/RpA_";
+  char  suffix[20];
+  char  filename[50];
+
+  // filename
+  strcpy(filename,prefix);
+  sprintf(suffix,"{rs=%.2f,y=%.1f}.dat",1.,y);
+  strcat(filename,suffix);
+  out=fopen(filename,"w");
+  //fprintf(out,"# R_pA, A=%.1f, alpha=%g\n",A,alpha_s);
+  //fprintf(out,"# columns: pT, R_ave, R_min, R_max\n");
+
+  // Here are some parameters that can be changed:
+  N_pT=50; 
+  pT_min=1.;
+  pT_max=10.;
+  // don't change anything after that.
+
+  step=(pT_max-pT_min)/((double) N_pT-1);
+  pT=pT_min;
+
+  printf(" Settings: y=%g, with pT_min=%g, pT_max=%g\n",y,pT_min,pT_max); 
+  double frac;
+
+  for (int i=0; i<N_pT; i++) {
+    frac = (double)i/(double)(N_pT-1);
+
+    //R_limits(pT,y,&R,&Rmin,&Rmax);
+
+    printf(" pT = %.5e , [%2.2f%]\n", y , 100.*frac); 
+    fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", pT, R, Rmin, Rmax );
+    pT += step;
+  }
+
+  printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);
+}
+

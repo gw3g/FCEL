@@ -1,4 +1,6 @@
 #include <math.h>
+#define SQR(x) x*x
+#define SGN(x) (double) ((x>0)-(x<0))
 
 /*--------------------------------------------------------------------*/
 // QCD
@@ -15,6 +17,71 @@ double      Nc = 3.;
 // keep it dimensionless, but sometimes need:
 double mp     = .93827208816          ; // GeV
 double hbarc  = .19732698041522198110 ; // GeV.fm
+
+/*--------------------------------------------------------------------*/
+typedef double (*rho)();
+
+// colour-bilities: g, g -> g, g
+/*
+#define C27  2.*(Nc+1.)
+double rho_27(double xi, double *Fc) { *Fc = C27;
+  double xibar = 1.-xi,
+         denom = 1.+SQR(xi)+SQR(xibar); denom*=(Nc+1.);
+  return .5*(Nc+3.)/denom;
+}
+
+double rho_1(double xi, double *Fc) { *Fc = 0.;
+  double dud = 0;
+  return rho_27(xi,&dud)*4./( (Nc+3.)*(Nc-1.) );
+}
+
+double rho_8(double xi, double *Fc) { *Fc = Ca;
+  double dud = 0;
+  return 1.-rho_27(xi,&dud)*2.*(Nc+1.)/(Nc+3.);
+}
+// */
+// colour-bilities: q, g -> q, g
+/*
+#define C15  .5*(Nc+1.)*(3.*Nc-1.)/Nc
+#define C6   .5*(Nc-1.)*(3.*Nc+1.)/Nc
+
+double rho_15(double xi, double *Fc) { *Fc = Cf + C15 - Ca;
+  double xibar = 1.-xi,
+         denom = Cf*SQR(xi)+Nc*xibar; denom*=4.*(Nc+1.);
+  return Nc*(Nc+2.)/denom;
+}
+
+double rho_6(double xi, double *Fc) { *Fc = Cf + C6 - Ca;
+  double dud   = 0,
+         denom = (Nc-1.)*(Nc+2.);
+  return rho_15(xi,&dud)*(Nc+1.)*(Nc-2.)/denom;
+}
+
+double rho_3(double xi, double *Fc) { *Fc = 2.*Cf - Ca ;
+  double dud   = 0,
+         denom = (Nc+2.)*Nc;
+  return rho_15(xi,&dud)*4.*(Nc+1.)*Cf*SQR(xi-.5*Nc/Cf)/denom;
+}
+// */
+// colour-bilities: g, g -> q, \bar{q}
+
+double rho_1(double xi, double *Fc) { *Fc = 0;
+  double xibar = 1.-xi,
+         denom = SQR(Nc*xi) + SQR(Nc*xibar) - 1.;
+  return 1./denom;
+}
+
+double rho_8(double xi, double *Fc) { *Fc = Ca;
+  double dud   = 0;
+  return 1.-rho_1(xi,&dud);
+}
+// */
+
+#define IRREPS 2
+//rho reps[IRREPS] = {&rho_1,&rho_8,&rho_27};
+//rho reps[IRREPS] = {&rho_3,&rho_6,&rho_15};
+rho reps[IRREPS] = {&rho_1,&rho_8};
+
 
 /*--------------------------------------------------------------------*/
 

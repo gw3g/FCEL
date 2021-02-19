@@ -22,9 +22,6 @@ void R_reps(double);   // pT input
 void R_scan_y(double) ;// pT fixed
 void R_scan_pT(double);// y  fixed
 
-#define SQR(x) x*x
-#define SGN(x) (double) ((x>0)-(x<0))
-
 /*--------------------------------------------------------------------*/
 
 #include <gsl/gsl_integration.h>
@@ -103,7 +100,7 @@ void RpA_FCEL(Fc,pT,y,sig,params,res)
 }
 
 /*--------------------------------------------------------------------*/
-typedef double (*rho)();
+/*typedef double (*rho)();
 
 // colour-bilities: g, g -> g, g
 
@@ -161,8 +158,8 @@ double rho_8(double xi, double *Fc) { *Fc = Ca;
 }
 // */
 
-#define IRREPS 3
-rho reps[IRREPS] = {&rho_1,&rho_8,&rho_27};
+//#define IRREPS 3
+//rho reps[IRREPS] = {&rho_1,&rho_8,&rho_27};
 //rho reps[IRREPS] = {&rho_3,&rho_6,&rho_15};
 //rho reps[IRREPS] = {&rho_1,&rho_8};
 
