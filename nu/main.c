@@ -19,7 +19,7 @@ FILE *in;
 FILE *out;
 
 void Z_scan_g();
-void r_scan_E(double(*)(double,double),double(*)(double));
+void r_scan_E(double(*)(double,double),double(*)(double),char*);
 
 /*--------------------------------------------------------------------*/
 
@@ -86,18 +86,18 @@ void Zpc_FCEL(Fc,E,dsig,phi,params,res)
   double inn[1] = {0.}; // to calc. Zpc w/o FCEL
   integrator(1e-8,1.,_inner,inn,&denom,&err);
 
-  if ((E<0.)||(fabs(Fc)<tol)) { *res = denom; printf("E<0: %.5e\n", denom); return;}
+  if ((E<0.)||(fabs(Fc)<tol)) { *res = denom; /*printf("E<0: %.5e\n", denom);*/ return;}
   //else if (fabs(Fc)<tol) {*res=1.; return;} // no mods.
 
   if (Fc<0) { printf("FCEG still to be implemented\n"); return; }
 
   double out[3] = {SQR(Qs_M),SQR(Qsp_M),fabs(Fc)*as};
   integrator(0.,x_max,_outer,out,&res_outer,&err);
-  *res = res_outer; printf("E>0: %.5e\n", res_outer);
+  *res = res_outer; //printf("E>0: %.5e\n", res_outer);
   
 }
 
-double Z_sum_( double E, 
+double Z_sum_( double E, // neutrino energy (in GeV)
                double (*dsig)(double,double), double (*phi)(double),
                void *params) {
 
@@ -106,8 +106,7 @@ double Z_sum_( double E,
 
   for (int i=0;i<IRREPS;i++) {
     prob = reps[i](xi,&Fc);
-    printf("%g\n",Fc);
-    Zpc_FCEL(Fc,E,dsig,phiN,params,&res);
+    Zpc_FCEL(Fc,E,dsig,phi,params,&res);
     res+= prob*temp;
   };
 
@@ -118,8 +117,9 @@ double Z_sum_( double E,
 
 int main() {
 
-  Z_scan_g();
-  //r_scan_E(dsig_1,phi_H3a);
+  //Z_scan_g();
+  r_scan_E(dsig_1,phi_H3a,"rFCEL2_H3a");
+  r_scan_E(dsig_1,phi_knee,"rFCEL2_knee");
 
   return 0;
 }
@@ -127,7 +127,8 @@ int main() {
 /*--------------------------------------------------------------------*/
 
 void r_scan_E( double (*dsig)(double,double),
-               double (*phi)(double)           ) { // SOMETHING WRONG!!
+               double (*phi)(double),
+               char    *prefix                ) {
   int N_E;
   double E, Emin, Emax, step,
          Z_orig, Z_fcel;
@@ -135,24 +136,23 @@ void r_scan_E( double (*dsig)(double,double),
   double kT = 0., x2 = 1e-7, xi = .5, qhat = .07, m = 1.5;
   double alpha_s = .5, ootp = 1./(2.*M_PI);
 
-  char *prefix=(char*)"r_FCEL_E";
+  //char *prefix=(char*)"r_FCEL2_E";
   char  suffix[20];
   char  filename[50];
 
   // filename
   strcpy(filename,prefix);
-  sprintf(suffix,"{kT=%.2f,x2=%.1f}.dat",kT,x2);
+  sprintf(suffix,"_{kT=%.2f,x2=%.1f}.dat",kT,x2);
   strcat(filename,suffix);
   out=fopen(filename,"w");
-  fprintf(out,"# FCEL (w/scaling), alpha=%g\n",alpha_s);
-  fprintf(out,"# columns: E/GeV r (1)\n");
+  fprintf(out,"# FCEL, xi=%g, alpha=%g\n",xi,alpha_s);
+  fprintf(out,"# columns: E/GeV,    Zpc,    Zpc w/ FCEL,   ratio\n");
 
 
   double res_outer, err;
 
   double as   = alpha_s*ootp,
          M2   = ( SQR(kT) + SQR(m) )/( xi*(1.-xi) ),
-         //Q2p  = Qs2(L_p,qhat,x2);
          Q2A  = Qs2(L_eff(14.5),qhat,x2);
 
   // starting params
@@ -160,12 +160,14 @@ void r_scan_E( double (*dsig)(double,double),
   double params[3] = {as,sqrt(Q2A/M2),sqrt(L_eff(14.5)/L_p)};
 
   // Here are some parameters that can be changed:
-  N_E=50; 
-  Emin=1e5;
+  N_E=100; 
+  Emin=1e3;
   Emax=1e8;
   // don't change anything after that.
 
+  printf("Settings: kT = %2.2f, x2 = %g \n",kT,x2); 
   double frac;
+
   E = Emin;
   step=pow(Emax/Emin,1./(double)(N_E-1));
 
@@ -177,7 +179,7 @@ void r_scan_E( double (*dsig)(double,double),
     Z_orig = Z_sum_(-E,dsig,phi,params);
     Z_fcel = Z_sum_(+E,dsig,phi,params);
 
-    printf( "%.8e   %.8e   %.8e\n", E, Z_orig, Z_fcel);
+    //printf( "%.8e   %.8e   %.8e\n", E, Z_orig, Z_fcel);
     fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", E, Z_orig, Z_fcel, Z_fcel/Z_orig);
 
     E *= step;
