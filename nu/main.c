@@ -24,7 +24,7 @@ void r_scan_E(double(*)(double,double),double(*)(double),char*);
 /*--------------------------------------------------------------------*/
 
 #include <gsl/gsl_integration.h>
-size_t calls=1e5; double tol=1e-7;
+size_t calls=1e5; double tol=1e-4;
 
 void integrator(a,b,func,params,res,err)
   double a, b;
@@ -118,8 +118,15 @@ double Z_sum_( double E, // neutrino energy (in GeV)
 int main() {
 
   //Z_scan_g();
-  r_scan_E(dsig_1,phi_H3a,"rFCEL2_H3a");
-  r_scan_E(dsig_1,phi_knee,"rFCEL2_knee");
+  //r_scan_E(dsig_2,phi_H3a,"out/r_nu_FCEL_H3a");
+  //r_scan_E(dsig_2,phi_knee,"out/r_nu_FCEL_knee");
+  //r_scan_E(dsig_2,phi_GSF,"out/r_nu_FCEL_GSF");
+  g = 2.7;
+  r_scan_E(dsig_1,phi_SP,"out/r_nu_scaling1");
+  g = 3.;
+  r_scan_E(dsig_1,phi_SP,"out/r_nu_scaling2");
+  g = 3.4;
+  r_scan_E(dsig_1,phi_SP,"out/r_nu_scaling3");
 
   return 0;
 }
@@ -133,7 +140,7 @@ void r_scan_E( double (*dsig)(double,double),
   double E, Emin, Emax, step,
          Z_orig, Z_fcel;
 
-  double kT = 0., x2 = 1e-7, xi = .5, qhat = .07, m = 1.5;
+  double kT = 0., x2 = 1e-5, xi = .5, qhat = .07, m = 1.5;
   double alpha_s = .5, ootp = 1./(2.*M_PI);
 
   //char *prefix=(char*)"r_FCEL2_E";
@@ -142,7 +149,7 @@ void r_scan_E( double (*dsig)(double,double),
 
   // filename
   strcpy(filename,prefix);
-  sprintf(suffix,"_{kT=%.2f,x2=%.1f}.dat",kT,x2);
+  sprintf(suffix,"_{kT=%.2f,x2=%g}.dat",kT,x2);
   strcat(filename,suffix);
   out=fopen(filename,"w");
   fprintf(out,"# FCEL, xi=%g, alpha=%g\n",xi,alpha_s);
@@ -155,14 +162,12 @@ void r_scan_E( double (*dsig)(double,double),
          M2   = ( SQR(kT) + SQR(m) )/( xi*(1.-xi) ),
          Q2A  = Qs2(L_eff(14.5),qhat,x2);
 
-  // starting params
-  //
   double params[3] = {as,sqrt(Q2A/M2),sqrt(L_eff(14.5)/L_p)};
 
   // Here are some parameters that can be changed:
-  N_E=100; 
+  N_E=40; 
   Emin=1e3;
-  Emax=1e8;
+  Emax=1e10;
   // don't change anything after that.
 
   printf("Settings: kT = %2.2f, x2 = %g \n",kT,x2); 
@@ -225,9 +230,9 @@ void Z_scan_g() {
   while (g<gmax) {
     frac = g/4.;
 
-    params[1]=.3; R1 = Z_sum_(E,dsig_1,phiN,params);
-    params[1]=.4; R2 = Z_sum_(E,dsig_1,phiN,params);
-    params[1]=.5; R3 = Z_sum_(E,dsig_1,phiN,params);
+    params[1]=.3; R1 = Z_sum_(E,dsig_1,phi_SP,params);
+    params[1]=.4; R2 = Z_sum_(E,dsig_1,phi_SP,params);
+    params[1]=.5; R3 = Z_sum_(E,dsig_1,phi_SP,params);
 
     printf(" gamma = %.5e , [%2.2f%]\n", g , 100.*frac); 
     fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", g, R1, R2, R3 );

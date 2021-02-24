@@ -1,21 +1,30 @@
 #include <math.h>
 /*
- * cosmic ray flux(es)
+ * cosmic ray flux(es): units? ... [GeV.m^2.s.sr]^-1
  *
  *--------------------------------------------------------------------*/
 
 extern double g; // spectral index
 
-double phiN(double Ep) { // units? [GeV.m^2.s.sr]^-1
+double phi_SP(double Ep) { // single power law
   return pow(Ep,-g);
 }
 
-double phi_knee(double Ep) { // Thunman 1996
+// OTHERS:
+double phi_knee(double ); // broken power law
+double phi_H3a( double ); // 3-component nucleon spectrum
+double phi_GSF( double ); // global spline fit
+
+/*--------------------------------------------------------------------*/
+
+double phi_knee(double Ep) { // Thunman 1996, eq (1)
   if (Ep<5e6) return 1.7/pow(Ep,2.7);
   else return 174./pow(Ep,3.);
 }
 
-double phi_H3a(double Ep) { // Goncalves 2017
+/*--------------------------------------------------------------------*/
+
+double phi_H3a(double Ep) { // from Goncalves 2017, eq (6)
   double I0  = 1.15, g1  = 1.65, g2  = 2.4, Ek  = 1.2e6, eps = 3.0;
   return I0*pow(Ep,-1.-g1)*pow( 1. + pow(Ep/Ek,eps), (g1-g2)/eps );
 }
@@ -1027,7 +1036,7 @@ grid GSF_data[THOUSAND] = { // CR: proton composition
   {3.e11,0.}
 };
 
-double phi_GSF(double Ep) { // `global spline fit' Dembinski
+double phi_GSF(double Ep) { // using Dembinski's table (ICRC2017)
   for (int i=0;i<THOUSAND-1;i++) {
     if ((GSF_data[i].Ep<=Ep)&&(GSF_data[i+1].Ep>=Ep)) {
       double slope = ( Ep - GSF_data[i].Ep )/( GSF_data[i+1].Ep - GSF_data[i].Ep );
