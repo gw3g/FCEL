@@ -14,11 +14,12 @@
 #include "sigma.h"
 #include "crflux.h"
 double g; // spectral index
-double x_max = 100.; // soft-gluon approx. ?
+double x_max = 1.; // soft-gluon approx. ?
 FILE *in;
 FILE *out;
 
 void Z_scan_g();
+void Z_scan_k();
 void r_scan_E(double(*)(double,double),double(*)(double),char*);
 
 /*--------------------------------------------------------------------*/
@@ -94,7 +95,6 @@ void Zpc_FCEL(Fc,E,dsig,phi,params,res)
   double out[3] = {SQR(Qs_M),SQR(Qsp_M),fabs(Fc)*as};
   integrator(0.,x_max,_outer,out,&res_outer,&err);
   *res = res_outer; //printf("E>0: %.5e\n", res_outer);
-  
 }
 
 double Z_sum_( double E, // neutrino energy (in GeV)
@@ -106,11 +106,16 @@ double Z_sum_( double E, // neutrino energy (in GeV)
 
   for (int i=0;i<IRREPS;i++) {
     prob = reps[i](xi,&Fc);
-    Zpc_FCEL(Fc,E,dsig,phi,params,&res);
-    res+= prob*temp;
+    Zpc_FCEL(Fc,E,dsig,phi,params,&temp);
+    res += prob*temp;
   };
 
   return res;
+}
+
+double rFCEL_scaling(void *params) {
+  double dummy = 1.;
+  return Z_sum_(dummy,dsig_1,phi_SP,params)/Z_sum_(-dummy,dsig_1,phi_SP,params);
 }
 
 /*--------------------------------------------------------------------*/
@@ -118,15 +123,16 @@ double Z_sum_( double E, // neutrino energy (in GeV)
 int main() {
 
   //Z_scan_g();
+  //Z_scan_k();
   //r_scan_E(dsig_2,phi_H3a,"out/r_nu_FCEL_H3a");
-  //r_scan_E(dsig_2,phi_knee,"out/r_nu_FCEL_knee");
+  r_scan_E(dsig_2,phi_knee,"out/r_nu_FCEL_knee");
   //r_scan_E(dsig_2,phi_GSF,"out/r_nu_FCEL_GSF");
-  g = 2.7;
+  /*g = 2.7;
   r_scan_E(dsig_1,phi_SP,"out/r_nu_scaling1");
   g = 3.;
   r_scan_E(dsig_1,phi_SP,"out/r_nu_scaling2");
   g = 3.4;
-  r_scan_E(dsig_1,phi_SP,"out/r_nu_scaling3");
+  r_scan_E(dsig_1,phi_SP,"out/r_nu_scaling3");//*/
 
   return 0;
 }
@@ -141,7 +147,7 @@ void r_scan_E( double (*dsig)(double,double),
          Z_orig, Z_fcel;
 
   double kT = 0., x2 = 1e-5, xi = .5, qhat = .07, m = 1.5;
-  double alpha_s = .5, ootp = 1./(2.*M_PI);
+  double alpha_s = .5;
 
   //char *prefix=(char*)"r_FCEL2_E";
   char  suffix[20];
@@ -165,7 +171,7 @@ void r_scan_E( double (*dsig)(double,double),
   double params[3] = {as,sqrt(Q2A/M2),sqrt(L_eff(14.5)/L_p)};
 
   // Here are some parameters that can be changed:
-  N_E=40; 
+  N_E=400; 
   Emin=1e3;
   Emax=1e10;
   // don't change anything after that.
@@ -204,7 +210,7 @@ void Z_scan_g() {
   double params[3] = {alpha_s*ootp,0.01,sqrt(L_eff(14.5)/L_p)};
 
 
-  char *prefix=(char*)"FCEL_scaling_";
+  char *prefix=(char*)"out/rFCEL_gamma_";
   char  suffix[20];
   char  filename[50];
 
@@ -213,8 +219,8 @@ void Z_scan_g() {
   sprintf(suffix,"{E=%.2f,xi=%.1f}.dat",E,xi);
   strcat(filename,suffix);
   out=fopen(filename,"w");
-  fprintf(out,"# FCEL (w/scaling), alpha=%g\n",alpha_s);
-  fprintf(out,"# columns: Qs/M, F(kappa=.3), F(kappa=.4), F(kappa=.5)\n");
+  fprintf(out,"# FCEL (w/scaling, kappa = Qs/M), alpha=%g\n",alpha_s);
+  fprintf(out,"# columns: gamma, F(kappa=.3), F(kappa=.4), F(kappa=.5)\n");
 
   // Here are some parameters that can be changed:
   gmin=.01;
@@ -230,13 +236,64 @@ void Z_scan_g() {
   while (g<gmax) {
     frac = g/4.;
 
-    params[1]=.3; R1 = Z_sum_(E,dsig_1,phi_SP,params);
-    params[1]=.4; R2 = Z_sum_(E,dsig_1,phi_SP,params);
-    params[1]=.5; R3 = Z_sum_(E,dsig_1,phi_SP,params);
+    params[1]=.3; R1 = rFCEL_scaling(params);
+    params[1]=.4; R2 = rFCEL_scaling(params);
+    params[1]=.5; R3 = rFCEL_scaling(params);
 
     printf(" gamma = %.5e , [%2.2f%]\n", g , 100.*frac); 
     fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", g, R1, R2, R3 );
     g += dg;
+  }
+
+  printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);
+}
+
+
+void Z_scan_k() {
+  double kappa, k_min, k_max, dk;
+
+  double R1, R2, R3;
+  double E = 1., xi=.5;
+  double alpha_s = .5;
+  // starting params
+  //
+  double params[3] = {alpha_s*ootp,0.,sqrt(L_eff(14.5)/L_p)};
+
+
+  char *prefix=(char*)"out/rFCEL_kappa_";
+  char  suffix[20];
+  char  filename[50];
+
+  // filename
+  strcpy(filename,prefix);
+  sprintf(suffix,"{E=%.2f,xi=%.1f}.dat",E,xi);
+  strcat(filename,suffix);
+  out=fopen(filename,"w");
+  fprintf(out,"# FCEL (w/scaling, kappa = Qs/M), alpha=%g\n",alpha_s);
+  fprintf(out,"# columns: kappa, F(gamma=2), F(gamma=2.5), F(gamma=3)\n");
+
+  // Here are some parameters that can be changed:
+  k_min = .001;
+  k_max = .6 ;
+  dk    = .01 ;
+  // don't change anything after that.
+
+  kappa = k_min;
+
+  printf(" Settings: gamma=%g, with g_min=%g, g_max=%g\n",g,k_min,k_max); 
+  double frac;
+
+  while (kappa<k_max) {
+    frac = kappa/(k_max-k_min);
+    params[1] = kappa;
+
+    g = 2.0; R1 = rFCEL_scaling(params);
+    g = 2.5; R2 = rFCEL_scaling(params);
+    g = 3.0; R3 = rFCEL_scaling(params);
+
+    printf(" Qs/M = %.5e , [%2.2f%]\n", kappa , 100.*frac); 
+    fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", kappa, R1, R2, R3 );
+    kappa += dk;
   }
 
   printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);

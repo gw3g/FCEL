@@ -17,6 +17,7 @@ double      Nc = 3.;
 // keep it dimensionless, but sometimes need:
 double mp     = .93827208816          ; // GeV
 double hbarc  = .19732698041522198110 ; // GeV.fm
+double ootp   = .15915494309189533577 ; // 1/(2.pi)
 
 /*--------------------------------------------------------------------*/
 typedef double (*rho)();
