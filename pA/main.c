@@ -100,70 +100,6 @@ void RpA_FCEL(Fc,pT,y,sig,params,res)
 }
 
 /*--------------------------------------------------------------------*/
-/*typedef double (*rho)();
-
-// colour-bilities: g, g -> g, g
-
-#define C27  2.*(Nc+1.)
-double rho_27(double xi, double *Fc) { *Fc = C27;
-  double xibar = 1.-xi,
-         denom = 1.+SQR(xi)+SQR(xibar); denom*=(Nc+1.);
-  return .5*(Nc+3.)/denom;
-}
-
-double rho_1(double xi, double *Fc) { *Fc = 0.;
-  double dud = 0;
-  return rho_27(xi,&dud)*4./( (Nc+3.)*(Nc-1.) );
-}
-
-double rho_8(double xi, double *Fc) { *Fc = Ca;
-  double dud = 0;
-  return 1.-rho_27(xi,&dud)*2.*(Nc+1.)/(Nc+3.);
-}
-// */
-// colour-bilities: q, g -> q, g
-/*
-#define C15  .5*(Nc+1.)*(3.*Nc-1.)/Nc
-#define C6   .5*(Nc-1.)*(3.*Nc+1.)/Nc
-
-double rho_15(double xi, double *Fc) { *Fc = Cf + C15 - Ca;
-  double xibar = 1.-xi,
-         denom = Cf*SQR(xi)+Nc*xibar; denom*=4.*(Nc+1.);
-  return Nc*(Nc+2.)/denom;
-}
-
-double rho_6(double xi, double *Fc) { *Fc = Cf + C6 - Ca;
-  double dud   = 0,
-         denom = (Nc-1.)*(Nc+2.);
-  return rho_15(xi,&dud)*(Nc+1.)*(Nc-2.)/denom;
-}
-
-double rho_3(double xi, double *Fc) { *Fc = 2.*Cf - Ca ;
-  double dud   = 0,
-         denom = (Nc+2.)*Nc;
-  return rho_15(xi,&dud)*4.*(Nc+1.)*Cf*SQR(xi-.5*Nc/Cf)/denom;
-}
-// */
-// colour-bilities: g, g -> q, \bar{q}
-/*
-double rho_1(double xi, double *Fc) { *Fc = 0;
-  double xibar = 1.-xi,
-         denom = SQR(Nc*xi) + SQR(Nc*xibar) - 1.;
-  return 1./denom;
-}
-
-double rho_8(double xi, double *Fc) { *Fc = Ca;
-  double dud   = 0;
-  return 1.-rho_1(xi,&dud);
-}
-// */
-
-//#define IRREPS 3
-//rho reps[IRREPS] = {&rho_1,&rho_8,&rho_27};
-//rho reps[IRREPS] = {&rho_3,&rho_6,&rho_15};
-//rho reps[IRREPS] = {&rho_1,&rho_8};
-
-/*--------------------------------------------------------------------*/
 // Hessian method
 //
 #define PARAMS 5  // q0, xi, z, n,  m_{Meson?}
@@ -214,12 +150,16 @@ void R_limits(double pT, double y, double *R_ave, double *R_min, double *R_max) 
 /*--------------------------------------------------------------------*/
 
 int main() {
+   channel(1);
+   double Fc;
+   printf("answer = %g\n", R_sum_(1.,0.,S));
+   printf("IRREPS = %d\n", IRREPS );
 
    R_reps(2.);
-   //R_scan_pT(0.);
+   R_scan_pT(0.);
    R_scan_pT(-2.);
    R_scan_y(2.);
-   //R_scan_pT(4.);
+   R_scan_pT(4.);
    return 0;
 }
 
@@ -227,8 +167,9 @@ int main() {
 void R_reps(double pT) {
   int N_y;
   double y, y_min, y_max, step;
+  size_t IRREPS = sizeof reps / sizeof *reps;
 
-  double xi=S[1], R[IRREPS];
+  double xi=S[1], R[3];
   double prob;
   double res;
   double Fc;
@@ -264,7 +205,7 @@ void R_reps(double pT) {
     fprintf( out, "%.8e", y);
 
     for (int j=0;j<IRREPS;j++) {
-      prob = reps[j](xi,&Fc);
+      prob = reps_gg_gg[j](xi,&Fc);
       RpA_FCEL(Fc,pT,y,dsig,S,&R[j]);
       res+= prob*R[j];
       fprintf( out, "   %.8e", R[j]);

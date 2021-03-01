@@ -23,65 +23,79 @@ double ootp   = .15915494309189533577 ; // 1/(2.pi)
 typedef double (*rho)();
 
 // colour-bilities: g, g -> g, g
-/*
+
 #define C27  2.*(Nc+1.)
-double rho_27(double xi, double *Fc) { *Fc = C27;
+
+double gg_gg_27(double xi, double *Fc) { *Fc = C27;
   double xibar = 1.-xi,
          denom = 1.+SQR(xi)+SQR(xibar); denom*=(Nc+1.);
   return .5*(Nc+3.)/denom;
 }
 
-double rho_1(double xi, double *Fc) { *Fc = 0.;
+double gg_gg_1(double xi, double *Fc) { *Fc = 0.;
   double dud = 0;
-  return rho_27(xi,&dud)*4./( (Nc+3.)*(Nc-1.) );
+  return gg_gg_27(xi,&dud)*4./( (Nc+3.)*(Nc-1.) );
 }
 
-double rho_8(double xi, double *Fc) { *Fc = Ca;
+double gg_gg_8(double xi, double *Fc) { *Fc = Ca;
   double dud = 0;
-  return 1.-rho_27(xi,&dud)*2.*(Nc+1.)/(Nc+3.);
+  return 1.-gg_gg_27(xi,&dud)*2.*(Nc+1.)/(Nc+3.);
 }
 // */
 // colour-bilities: q, g -> q, g
-/*
+
 #define C15  .5*(Nc+1.)*(3.*Nc-1.)/Nc
 #define C6   .5*(Nc-1.)*(3.*Nc+1.)/Nc
 
-double rho_15(double xi, double *Fc) { *Fc = Cf + C15 - Ca;
+double qg_qg_15(double xi, double *Fc) { *Fc = Cf + C15 - Ca;
   double xibar = 1.-xi,
          denom = Cf*SQR(xi)+Nc*xibar; denom*=4.*(Nc+1.);
   return Nc*(Nc+2.)/denom;
 }
 
-double rho_6(double xi, double *Fc) { *Fc = Cf + C6 - Ca;
+double qg_qg_6(double xi, double *Fc) { *Fc = Cf + C6 - Ca;
   double dud   = 0,
          denom = (Nc-1.)*(Nc+2.);
-  return rho_15(xi,&dud)*(Nc+1.)*(Nc-2.)/denom;
+  return qg_qg_15(xi,&dud)*(Nc+1.)*(Nc-2.)/denom;
 }
 
-double rho_3(double xi, double *Fc) { *Fc = 2.*Cf - Ca ;
+double qg_qg_3(double xi, double *Fc) { *Fc = 2.*Cf - Ca ;
   double dud   = 0,
          denom = (Nc+2.)*Nc;
-  return rho_15(xi,&dud)*4.*(Nc+1.)*Cf*SQR(xi-.5*Nc/Cf)/denom;
+  return qg_qg_15(xi,&dud)*4.*(Nc+1.)*Cf*SQR(xi-.5*Nc/Cf)/denom;
 }
 // */
 // colour-bilities: g, g -> q, \bar{q}
 
-double rho_1(double xi, double *Fc) { *Fc = 0;
+double gg_qq_1(double xi, double *Fc) { *Fc = 0;
   double xibar = 1.-xi,
          denom = SQR(Nc*xi) + SQR(Nc*xibar) - 1.;
   return 1./denom;
 }
 
-double rho_8(double xi, double *Fc) { *Fc = Ca;
+double gg_qq_8(double xi, double *Fc) { *Fc = Ca;
   double dud   = 0;
-  return 1.-rho_1(xi,&dud);
+  return 1.-gg_qq_1(xi,&dud);
 }
 // */
 
-#define IRREPS 2
-//rho reps[IRREPS] = {&rho_1,&rho_8,&rho_27};
-//rho reps[IRREPS] = {&rho_3,&rho_6,&rho_15};
-rho reps[IRREPS] = {&rho_1,&rho_8};
+//#define IRREPS 2
+rho reps_gg_gg[3] = {&gg_gg_1,&gg_gg_8,&gg_gg_27};
+rho reps_qg_qg[3] = {&qg_qg_3,&qg_qg_6,&qg_qg_15};
+rho reps_gg_qq[2] = {&gg_qq_1,&gg_qq_8};
+rho *reps;
+char reaction[10];
+int IRREPS;
+
+void channel(int r) {
+  switch(r) {
+    case 1 : strcpy(reaction, "{gg;gg}"); reps = reps_gg_gg; IRREPS = 3; break;
+    case 2 : strcpy(reaction, "{qg;qg}"); reps = reps_qg_qg; IRREPS = 3; break;
+    case 3 : strcpy(reaction, "{gg;qq}"); reps = reps_gg_qq; IRREPS = 2; break;
+    default: reps = NULL;
+  }
+  printf("Switched channel to %d\n",r);
+}
 
 
 /*--------------------------------------------------------------------*/
