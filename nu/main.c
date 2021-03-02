@@ -121,6 +121,9 @@ double rFCEL_scaling(void *params) {
 /*--------------------------------------------------------------------*/
 
 int main() {
+  channel(3);
+  double Fc;
+  printf("IRREPS = %d\n", IRREPS );
 
   //Z_scan_g();
   //Z_scan_k();
