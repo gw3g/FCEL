@@ -157,7 +157,7 @@ int main() {
 
    R_reps(2.);
    R_scan_pT(0.);
-   R_scan_pT(-2.);
+   R_scan_pT(2.);
    R_scan_y(2.);
    R_scan_pT(4.);
    return 0;
