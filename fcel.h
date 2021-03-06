@@ -62,7 +62,8 @@ double qg_qg_6(double xi, double *Fc) { *Fc = Cf + C6 - Ca;
 double qg_qg_3(double xi, double *Fc) { *Fc = 2.*Cf - Ca ;
   double dud   = 0,
          denom = (Nc+2.)*Nc;
-  return qg_qg_15(xi,&dud)*4.*(Nc+1.)*Cf*SQR(xi-.5*Nc/Cf)/denom;
+  //return qg_qg_15(xi,&dud)*4.*(Nc+1.)*Cf*SQR(xi-.5*Nc/Cf)/denom; // ???
+  return 1. - qg_qg_6(xi,&dud) - qg_qg_15(xi,&dud);
 }
 // */
 // colour-bilities: g, g -> q, \bar{q}

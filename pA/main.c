@@ -25,7 +25,7 @@ void R_scan_pT(double);// y  fixed
 /*--------------------------------------------------------------------*/
 
 #include <gsl/gsl_integration.h>
-size_t calls=1e5; double tol=1e-2;
+size_t calls=1e5; double tol=1e-4;
 
 void integrator(a,b,func,params,res,err)
   double a, b;
@@ -72,7 +72,7 @@ void RpA_FCEL(Fc,pT,y,sig,params,res)
   double rs     = SQRTS*1e3, // root s
          x2     = ( mT/((1.-xi)*rs) )*exp(-y),
          y_max  = log(rs/mT),
-         x_max  = fmin(1.,xi*exp(y_max-y)-1.),
+         x_max  = fmin(1.,fmax(xi*exp(y_max-y)-1.,0.5)), // ???
          kappa  = 2.*mT*z/(.5*rs);
 
   double as   = alpha_s/(2.*M_PI),
@@ -112,7 +112,6 @@ double R_sum_(double pT, double y, void *params) {
 
   for (int i=0;i<IRREPS;i++) {
     prob = reps[i](xi,&Fc);
-    //printf("%g\n",Fc);
     RpA_FCEL(Fc,pT,y,dsig,params,&temp);
     res+= prob*temp;
   };
@@ -152,14 +151,15 @@ void R_limits(double pT, double y, double *R_ave, double *R_min, double *R_max) 
 int main() {
    channel(1);
    double Fc;
-   printf("answer = %g\n", R_sum_(1.,0.,S));
-   printf("IRREPS = %d\n", IRREPS );
 
    R_reps(2.);
-   R_scan_pT(0.);
-   R_scan_pT(2.);
+   //
    R_scan_y(2.);
-   R_scan_pT(4.);
+   R_scan_y(6.);
+
+   R_scan_pT(0.);
+   R_scan_pT(3.);
+   R_scan_pT(5.);
    return 0;
 }
 
@@ -167,27 +167,26 @@ int main() {
 void R_reps(double pT) {
   int N_y;
   double y, y_min, y_max, step;
-  size_t IRREPS = sizeof reps / sizeof *reps;
 
   double xi=S[1], R[3];
   double prob;
   double res;
   double Fc;
 
-  char *prefix=(char*)"out/R_pT";
+  char *prefix=(char*)"out/R_reps_";
   char  suffix[20];
   char  filename[50];
 
   // filename
   strcpy(filename,prefix);
-  sprintf(suffix,"%gGeV.dat",pT);
+  sprintf(suffix,"{rs=%.2f,pT=%.1f}.dat",SQRTS,pT);
   strcat(filename,suffix);
   out=fopen(filename,"w");
   fprintf(out,"# R_pPb, z=%g, alpha=%g\n",S[2],alpha_s);
   fprintf(out,"# columns: y, {R1,R2,...}, R_ave\n");
 
   // Here are some parameters that can be changed:
-  N_y=50; 
+  N_y=100; 
   y_min=-6.;
   y_max=+6.;
   // don't change anything after that.
@@ -205,7 +204,7 @@ void R_reps(double pT) {
     fprintf( out, "%.8e", y);
 
     for (int j=0;j<IRREPS;j++) {
-      prob = reps_gg_gg[j](xi,&Fc);
+      prob = reps[j](xi,&Fc);
       RpA_FCEL(Fc,pT,y,dsig,S,&R[j]);
       res+= prob*R[j];
       fprintf( out, "   %.8e", R[j]);
@@ -237,9 +236,9 @@ void R_scan_y(double pT) {
   fprintf(out,"# columns: y, R_ave, R_min, R_max\n");
 
   // Here are some parameters that can be changed:
-  N_y=50; 
-  y_min=-2.;
-  y_max=+2.;
+  N_y=200; 
+  y_min=-6.;
+  y_max=+6.;
   // don't change anything after that.
 
   step=(y_max-y_min)/((double) N_y-1);
