@@ -6,12 +6,15 @@
  *    @author  GJ
  *    @version 0.1
  *
+ *    COMPILE: gcc -lm -lgsl -lgslcblas main.c
+ *
  */
 
 
 /*--------------------------------------------------------------------*/
 #include "../fcel.h"
 #include "sigma.h"
+//double SQRTS = 5.02; // TeV
 double SQRTS = 8.16; // TeV
 double A = 208.;   // Pb
 double alpha_s = 0.5; // coupling
@@ -21,6 +24,8 @@ FILE *out;
 void R_reps(double);   // pT input
 void R_scan_y(double) ;// pT fixed
 void R_scan_pT(double);// y  fixed
+void R_FB(double);     // y  fixed
+int  progress = 0;
 
 /*--------------------------------------------------------------------*/
 
@@ -72,8 +77,9 @@ void RpA_FCEL(Fc,pT,y,sig,params,res)
   double rs     = SQRTS*1e3, // root s
          x2     = ( mT/((1.-xi)*rs) )*exp(-y),
          y_max  = log(rs/mT),
-         x_max  = fmin(1.,fmax(xi*exp(y_max-y)-1.,0.5)), // ???
-         kappa  = 2.*mT*z/(.5*rs);
+         x_max  = fmin(1.,(exp(y_max-y)-1.)), // ???
+         kappa  = 4.*mT*z/(rs),
+         eps_g  = -3.;
 
   double as   = alpha_s/(2.*M_PI),
          M2   = mT*mT/( xi*(1.-xi) ),
@@ -88,7 +94,7 @@ void RpA_FCEL(Fc,pT,y,sig,params,res)
     double  dy = SGN(Fc)*log(1.+x),
             P  = phat(x,A,B,C);
 
-    double in[2] = {n,kappa}; // ~ (1.-kappa*cosh(y))^n
+    double in[3] = {n,kappa,eps_g}; // ~ (1.-xF)^n
     return P*sig(y+dy,in)/( sig(y,in)*pow(1.+x,SGN(Fc)) );
   };
 
@@ -103,8 +109,8 @@ void RpA_FCEL(Fc,pT,y,sig,params,res)
 // Hessian method
 //
 #define PARAMS 5  // q0, xi, z, n,  m_{Meson?}
-double dS[PARAMS] = {.02,.25,.2,2.5,0.0};
-double  S[PARAMS] = {.07,.50,.6,7.5,0.0};
+double dS[PARAMS] = {.02,.25,.2,2.,0.0};
+double  S[PARAMS] = {.07,.50,.6,6.,0.0};
 
 double R_sum_(double pT, double y, void *params) {
   double Fc, temp, prob, res=.0,
@@ -149,17 +155,58 @@ void R_limits(double pT, double y, double *R_ave, double *R_min, double *R_max) 
 /*--------------------------------------------------------------------*/
 
 int main() {
-   channel(1);
-   double Fc;
+  double Fc;
+  // Repeat figs for 2003.06337
 
-   R_reps(2.);
-   //
-   R_scan_y(2.);
-   R_scan_y(6.);
+  SQRTS = 8.16; // TeV
+  A = 208.;     // Pb
+  alpha_s = 0.5;// coupling
 
-   R_scan_pT(0.);
-   R_scan_pT(3.);
-   R_scan_pT(5.);
+  S[2] = .6; dS[2] = .2; // z -- frag. variable
+  S[3] = 6.; dS[3] = 2.; // n -- exponent
+  S[4] = 0.; dS[4] = 0.; // eff. quark mass
+
+  { // FIG 2,3
+    channel(1); // g, g -> g, g
+    R_reps(2.);
+    R_scan_y(2.);   R_scan_y(6.);
+    R_scan_pT(0.);  R_scan_pT(3.);    R_scan_pT(5.);
+  }
+
+  SQRTS = 5.02; // TeV
+  { // FIG 5
+    channel(1); // g, g -> g, g
+    R_scan_pT(0.);
+  }
+
+  SQRTS = 8.16; // TeV
+  { // FIG 6
+    channel(2); // q, g -> q, g
+    R_reps(2.);
+    R_scan_y(2.);   R_scan_y(6.);
+  }
+
+  { // FIG 7
+    channel(3); // g, q -> q, g
+    R_reps(2.);
+    R_scan_y(2.);   R_scan_y(6.);
+  }
+
+  { // FIG 8
+    channel(4); // g, g -> q, q
+    R_reps(2.);
+    R_scan_y(2.);   R_scan_y(6.);
+  }
+
+
+   //R_scan_y(10.);
+
+   //R_FB(2.5);
+   //R_FB(4.0);
+
+   //R_scan_pT(0.);
+   //R_scan_pT(3.);
+   //R_scan_pT(5.);
    return 0;
 }
 
@@ -179,7 +226,8 @@ void R_reps(double pT) {
 
   // filename
   strcpy(filename,prefix);
-  sprintf(suffix,"{rs=%.2f,pT=%.1f}.dat",SQRTS,pT);
+  sprintf(suffix,"_{rs=%.2f,pT=%.1f}.dat",SQRTS,pT);
+  strcat(filename,reaction);
   strcat(filename,suffix);
   out=fopen(filename,"w");
   fprintf(out,"# R_pPb, z=%g, alpha=%g\n",S[2],alpha_s);
@@ -194,7 +242,7 @@ void R_reps(double pT) {
   step=(y_max-y_min)/((double) N_y-1);
   y=y_min;
 
-  printf(" Settings: pT=%g, with y_min=%g, y_max=%g\n",pT,y_min,y_max); 
+  if (progress) { printf(" Settings: pT=%g, with y_min=%g, y_max=%g\n",pT,y_min,y_max); }
   double frac;
 
   for (int i=0; i<N_y; i++) {
@@ -210,7 +258,7 @@ void R_reps(double pT) {
       fprintf( out, "   %.8e", R[j]);
     }
 
-    printf(" y = %.5e , [%2.2f%]\n", y , 100.*frac); 
+    if (progress) { printf(" y = %.5e , [%2.2f%]\n", y , 100.*frac); }
     fprintf( out, "   %.8e\n", res );
     y += step;
   }
@@ -229,7 +277,8 @@ void R_scan_y(double pT) {
 
   // filename
   strcpy(filename,prefix);
-  sprintf(suffix,"{rs=%.2f,pT=%.1f}.dat",SQRTS,pT);
+  sprintf(suffix,"_{rs=%.2f,pT=%.1f}.dat",SQRTS,pT);
+  strcat(filename,reaction);
   strcat(filename,suffix);
   out=fopen(filename,"w");
   fprintf(out,"# R_pA, A=%.1f, alpha=%g\n",A,alpha_s);
@@ -244,7 +293,7 @@ void R_scan_y(double pT) {
   step=(y_max-y_min)/((double) N_y-1);
   y=y_min;
 
-  printf(" Settings: pT=%g, with y_min=%g, y_max=%g\n",pT,y_min,y_max); 
+  if (progress) { printf(" Settings: pT=%g, with y_min=%g, y_max=%g\n",pT,y_min,y_max); }
   double frac;
 
   for (int i=0; i<N_y; i++) {
@@ -252,7 +301,7 @@ void R_scan_y(double pT) {
 
     R_limits(pT,y,&R,&Rmin,&Rmax);
 
-    printf(" y = %.5e , [%2.2f%]\n", y , 100.*frac); 
+    if (progress) { printf(" y = %.5e , [%2.2f%]\n", y , 100.*frac); }
     fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", y, R, Rmin, Rmax );
     y += step;
   }
@@ -271,7 +320,8 @@ void R_scan_pT(double y) {
 
   // filename
   strcpy(filename,prefix);
-  sprintf(suffix,"{rs=%.2f,y=%.1f}.dat",SQRTS,y);
+  sprintf(suffix,"_{rs=%.2f,y=%.1f}.dat",SQRTS,y);
+  strcat(filename,reaction);
   strcat(filename,suffix);
   out=fopen(filename,"w");
   fprintf(out,"# R_pA, A=%.1f, alpha=%g\n",A,alpha_s);
@@ -286,7 +336,7 @@ void R_scan_pT(double y) {
   step=(pT_max-pT_min)/((double) N_pT-1);
   pT=pT_min;
 
-  printf(" Settings: y=%g, with pT_min=%g, pT_max=%g\n",y,pT_min,pT_max); 
+  if (progress) { printf(" Settings: y=%g, with pT_min=%g, pT_max=%g\n",y,pT_min,pT_max); }
   double frac;
 
   for (int i=0; i<N_pT; i++) {
@@ -294,8 +344,52 @@ void R_scan_pT(double y) {
 
     R_limits(pT,y,&R,&Rmin,&Rmax);
 
-    printf(" pT = %.5e , [%2.2f%]\n", y , 100.*frac); 
+    if (progress) { printf(" pT = %.5e , [%2.2f%]\n", y , 100.*frac); }
     fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", pT, R, Rmin, Rmax );
+    pT += step;
+  }
+
+  printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);
+}
+
+void R_FB(double y) { // Forward:backward prod. ratio
+  int N_pT;
+  double Rf, Rfmin, Rfmax,
+         Rb, Rbmin, Rbmax,
+         pT, pT_min, pT_max, step;
+
+  char *prefix=(char*)"out/R_FB_";
+  char  suffix[20];
+  char  filename[50];
+
+  // filename
+  strcpy(filename,prefix);
+  sprintf(suffix,"{rs=%.2f,y=%.1f}.dat",SQRTS,y);
+  strcat(filename,suffix);
+  out=fopen(filename,"w");
+  fprintf(out,"# R_FB, A=%.1f, alpha=%g\n",A,alpha_s);
+  fprintf(out,"# columns: pT, R_ave, R_min, R_max\n");
+
+  // Here are some parameters that can be changed:
+  N_pT=50; 
+  pT_min=1.;
+  pT_max=10.;
+  // don't change anything after that.
+
+  step=(pT_max-pT_min)/((double) N_pT-1);
+  pT=pT_min;
+
+  if (progress) { printf(" Settings: y=%g, with pT_min=%g, pT_max=%g\n",y,pT_min,pT_max); }
+  double frac;
+
+  for (int i=0; i<N_pT; i++) {
+    frac = (double)i/(double)(N_pT-1);
+
+    R_limits(pT,+y,&Rf,&Rfmin,&Rfmax);
+    R_limits(pT,-y,&Rb,&Rbmin,&Rbmax);
+
+    if (progress) { printf(" pT = %.5e , [%2.2f%]\n", y , 100.*frac); }
+    fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", pT, Rf/Rb, Rfmin/Rbmax, Rfmax/Rbmin );
     pT += step;
   }
 

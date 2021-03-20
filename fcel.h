@@ -66,6 +66,24 @@ double qg_qg_3(double xi, double *Fc) { *Fc = 2.*Cf - Ca ;
   return 1. - qg_qg_6(xi,&dud) - qg_qg_15(xi,&dud);
 }
 // */
+// colour-bilities: g, q -> q, g
+
+double gq_qg_15(double xi, double *Fc) { *Fc = Ca + C15 - Cf;
+  double dud   = 0;
+  return qg_qg_15(xi,&dud);
+}
+
+double gq_qg_6(double xi, double *Fc) { *Fc = Ca + C6 - Cf;
+  double dud   = 0;
+  return qg_qg_6(xi,&dud);
+}
+
+double gq_qg_3(double xi, double *Fc) { *Fc = Ca ;
+  double dud   = 0;
+  return qg_qg_3(xi,&dud);
+}
+
+// */
 // colour-bilities: g, g -> q, \bar{q}
 
 double gg_qq_1(double xi, double *Fc) { *Fc = 0;
@@ -83,6 +101,7 @@ double gg_qq_8(double xi, double *Fc) { *Fc = Ca;
 //#define IRREPS 2
 rho reps_gg_gg[3] = {&gg_gg_1,&gg_gg_8,&gg_gg_27};
 rho reps_qg_qg[3] = {&qg_qg_3,&qg_qg_6,&qg_qg_15};
+rho reps_gq_qg[3] = {&gq_qg_3,&gq_qg_6,&gq_qg_15};
 rho reps_gg_qq[2] = {&gg_qq_1,&gg_qq_8};
 rho *reps;
 char reaction[10];
@@ -92,7 +111,8 @@ void channel(int r) {
   switch(r) {
     case 1 : strcpy(reaction, "{gg;gg}"); reps = reps_gg_gg; IRREPS = 3; break;
     case 2 : strcpy(reaction, "{qg;qg}"); reps = reps_qg_qg; IRREPS = 3; break;
-    case 3 : strcpy(reaction, "{gg;qq}"); reps = reps_gg_qq; IRREPS = 2; break;
+    case 3 : strcpy(reaction, "{gq;qg}"); reps = reps_gq_qg; IRREPS = 3; break;
+    case 4 : strcpy(reaction, "{gg;qq}"); reps = reps_gg_qq; IRREPS = 2; break;
     default: reps = NULL;
   }
   printf("Switched channel to %d\n",r);
