@@ -14,7 +14,8 @@ double dsig(double y, void *params) {     // scaling function
 
   if (xF>1.) {return 1e-5;}
   else {
-    return pow(1.-xF,n)*(1.+eps_g*sqrt(xF)+gam*xF);
+    //return pow(1.-xF,n)*(1.+eps_g*sqrt(xF)+gam*xF);
+    return pow((1.-xF)*(1.-sqrt(xF)),n);
   }
 }
 

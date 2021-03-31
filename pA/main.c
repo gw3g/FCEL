@@ -26,6 +26,7 @@ void R_scan_y(double) ;// pT fixed
 void R_scan_pT(double);// y  fixed
 void R_FB(double);     // y  fixed
 int  progress = 0;
+void R_Casimir(double,double);// (pT,y)
 
 /*--------------------------------------------------------------------*/
 
@@ -109,8 +110,8 @@ void RpA_FCEL(Fc,pT,y,sig,params,res)
 // Hessian method
 //
 #define PARAMS 5  // q0, xi, z, n,  m_{Meson?}
-double dS[PARAMS] = {.02,.25,.2,2.,0.0};
-double  S[PARAMS] = {.07,.50,.6,6.,0.0};
+double dS[PARAMS] = {.02,.25,.2,1.,0.1};
+double  S[PARAMS] = {.07,.50,.6,4.,1.5};
 
 double R_sum_(double pT, double y, void *params) {
   double Fc, temp, prob, res=.0,
@@ -156,6 +157,13 @@ void R_limits(double pT, double y, double *R_ave, double *R_min, double *R_max) 
 
 int main() {
   double Fc;
+
+  R_Casimir(0.,+3.5);
+  R_Casimir(0.,-3.5);
+  R_Casimir(2.,+3.5);
+  R_Casimir(2.,-3.5);
+
+/*
   // Repeat figs for 2003.06337
 
   SQRTS = 8.16; // TeV
@@ -196,7 +204,7 @@ int main() {
     channel(4); // g, g -> q, q
     R_reps(2.);
     R_scan_y(2.);   R_scan_y(6.);
-  }
+  } //*/
 
 
    //R_scan_y(10.);
@@ -391,6 +399,52 @@ void R_FB(double y) { // Forward:backward prod. ratio
     if (progress) { printf(" pT = %.5e , [%2.2f%]\n", y , 100.*frac); }
     fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", pT, Rf/Rb, Rfmin/Rbmax, Rfmax/Rbmin );
     pT += step;
+  }
+
+  printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);
+}
+
+
+void R_Casimir(double pT, double y) { // function of global final colour
+  int N_CR;
+  double  R, R_minus, R_plus, Fc,
+         CR, CR_min, CR_max, step;
+
+  char *prefix=(char*)"out/R_CR_";
+  char  suffix[20];
+  char  filename[50];
+
+  // filename
+  strcpy(filename,prefix);
+  sprintf(suffix,"{rs=%.2f,pT=%.1f,y=%.1f}.dat",SQRTS,pT,y);
+  strcat(filename,suffix);
+  out=fopen(filename,"w");
+  fprintf(out,"# R, A=%.1f, alpha=%g\n",A,alpha_s);
+  fprintf(out,"# columns: C_R, R_ave, R_min, R_max\n");
+
+  // Here are some parameters that can be changed:
+  N_CR=60; 
+  CR_min=0.;
+  CR_max=20.;
+  // don't change anything after that.
+
+  step=(CR_max-CR_min)/((double) N_CR-1);
+  CR=CR_min;
+
+  if (progress) { printf(" Settings: y=%g, pT=%g, with CR_min=%g, CR_max=%g\n",y,pT,CR_min,CR_max); }
+  double frac;
+
+  for (int i=0; i<N_CR; i++) {
+    frac = (double)i/(double)(N_CR-1);
+    Fc = Cf + CR - Cf;
+
+    RpA_FCEL(Fc,pT,y-1.,dsig,S,&R_minus);
+    RpA_FCEL(Fc,pT,y,dsig,S,&R);
+    RpA_FCEL(Fc,pT,y+1.,dsig,S,&R_plus);
+
+    if (progress) { printf(" pT = %.5e, y = %.5e , [%2.2f%]\n", pT, y , 100.*frac); }
+    fprintf( out, "%.8e   %.8e   %.8e    %.8e\n", CR, R, R_minus, R_plus );
+    CR += step;
   }
 
   printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);
