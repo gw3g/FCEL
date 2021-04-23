@@ -1,23 +1,23 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <math.h>
 #include <string.h>
 /*
  *    code for LHC predictions, RpA
  *    @author  GJ
- *    @version 0.1
+ *    @version 0.8
  *
  *    COMPILE: gcc -lm -lgsl -lgslcblas main.c
- *
  */
 
 
 /*--------------------------------------------------------------------*/
+
 #include "../fcel.h"
 #include "sigma.h"
-//double SQRTS = 5.02; // TeV
-double SQRTS = 8.16; // TeV
-double A = 208.;   // Pb
-double alpha_s = 0.5; // coupling
+double SQRTS = 8.16;   // TeV
+double A = 208.;       // Pb
+double alpha_s = 0.5;  // coupling
 
 //FILE *in;
 FILE *out;
@@ -76,10 +76,10 @@ void RpA_FCEL(Fc,pT,y,sig,params,res)
   double mT = sqrt( SQR(kT) + SQR(m) );
 
   double rs     = SQRTS*1e3, // root s
-         x2     = ( mT/((1.-xi)*rs) )*exp(-y),
+         x2     = ( mT/((.5)*rs) )*exp(-y), // xi = .5
          y_max  = log(rs/mT),
-         x_max  = fmin(1.,(exp(y_max-y)-1.)), // ???
-         kappa  = 4.*mT*z/(rs),
+         x_max  = 1.,//fmin(1.,(.5*exp(y_max-y)-1.)), // xi = .5
+         kappa  = 4.*sqrt( SQR(pT) + SQR(1.8) )/(rs), // D-meson transverse mass
          eps_g  = -3.;
 
   double as   = alpha_s/(2.*M_PI),
@@ -100,18 +100,17 @@ void RpA_FCEL(Fc,pT,y,sig,params,res)
   };
 
   double out[3] = {Q2A/M2,Q2p/M2,fabs(Fc)*as};
-  //printf("test: %.2f\n",pT);
-  integrator(0.,x_max,_integrand,out,&res_outer,&err);
-  *res = res_outer ;
+  integrator(0.,x_max,_integrand,out,&res_outer,&err); // do integral
 
+  *res = res_outer ;
 }
 
 /*--------------------------------------------------------------------*/
 // Hessian method
 //
-#define PARAMS 5  // q0, xi, z, n,  m_{Meson?}
+#define PARAMS 5  //  q0, xi, z, n, m_Q
 double dS[PARAMS] = {.02,.25,.2,1.,0.1};
-double  S[PARAMS] = {.07,.50,.6,4.,1.5};
+double  S[PARAMS] = {.07,.50,.8,4.,1.5};
 
 double R_sum_(double pT, double y, void *params) {
   double Fc, temp, prob, res=.0,
@@ -157,11 +156,13 @@ void R_limits(double pT, double y, double *R_ave, double *R_min, double *R_max) 
 
 int main() {
   double Fc;
+  gsl_set_error_handler_off(); // live on the edge
 
-  R_Casimir(0.,+3.5);
-  R_Casimir(0.,-3.5);
-  R_Casimir(2.,+3.5);
-  R_Casimir(2.,-3.5);
+  //R_Casimir(0.,+3.5);
+  //R_Casimir(0.,+5.5);
+  //R_Casimir(0.,-5.5);
+  //R_Casimir(2.,+3.5);
+  //R_Casimir(2.,-3.5);
 
 /*
   // Repeat figs for 2003.06337
@@ -205,6 +206,42 @@ int main() {
     R_reps(2.);
     R_scan_y(2.);   R_scan_y(6.);
   } //*/
+
+  // >> LCHb, 5 TeV D0 <<
+
+  SQRTS = 5.02; // TeV
+  A = 208.;     // Pb
+  alpha_s = 0.5;// coupling
+
+  S[2] = 0.8;  dS[2] = 0.2;// z -- frag. variable
+  S[3] = 4.0;  dS[3] = 1.0;// n -- exponent
+  S[4] = 1.5;  dS[4] = 0.5;// eff. quark mass
+
+  { //
+    channel(4); // g, g -> q, q
+
+    R_scan_pT(+2.25);  
+    R_scan_pT(+2.75);  
+    R_scan_pT(+3.25);  
+    R_scan_pT(+3.75);  
+
+    R_scan_pT(-2.75);  
+    R_scan_pT(-3.25);  
+    R_scan_pT(-3.75);  
+    R_scan_pT(-4.25);  
+
+    R_scan_y(.5);  
+    R_scan_y(1.5);  
+    R_scan_y(2.5);  
+    R_scan_y(3.5);  
+    R_scan_y(4.5);  
+    R_scan_y(5.5);  
+    R_scan_y(6.5);  
+    R_scan_y(7.5);  
+    R_scan_y(8.5);  
+    R_scan_y(9.5);   //*/
+  }//*/
+
 
 
    //R_scan_y(10.);
@@ -277,7 +314,7 @@ void R_reps(double pT) {
 
 void R_scan_y(double pT) {
   int N_y;
-  double R, Rmin, Rmax, y, y_min, y_max, step;
+  double R, Rmin, Rmax, y, y_min, y_max, step, dummy;
 
   char *prefix=(char*)"out/RpA_";
   char  suffix[20];
@@ -307,10 +344,11 @@ void R_scan_y(double pT) {
   for (int i=0; i<N_y; i++) {
     frac = (double)i/(double)(N_y-1);
 
-    R_limits(pT,y,&R,&Rmin,&Rmax);
+    R_limits(pT,y,&R,&Rmin,&Rmax); // calculation
 
     if (progress) { printf(" y = %.5e , [%2.2f%]\n", y , 100.*frac); }
-    fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", y, R, Rmin, Rmax );
+    fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", y, R, Rmin, Rmax);
+
     y += step;
   }
 
@@ -320,7 +358,7 @@ void R_scan_y(double pT) {
 
 void R_scan_pT(double y) {
   int N_pT;
-  double R, Rmin, Rmax, pT, pT_min, pT_max, step;
+  double R, Rmin, Rmax, pT, pT_min, pT_max, step, dummy;
 
   char *prefix=(char*)"out/RpA_";
   char  suffix[20];
@@ -336,8 +374,8 @@ void R_scan_pT(double y) {
   fprintf(out,"# columns: pT, R_ave, R_min, R_max\n");
 
   // Here are some parameters that can be changed:
-  N_pT=50; 
-  pT_min=1.;
+  N_pT=100; 
+  pT_min=.1;
   pT_max=10.;
   // don't change anything after that.
 
@@ -350,10 +388,11 @@ void R_scan_pT(double y) {
   for (int i=0; i<N_pT; i++) {
     frac = (double)i/(double)(N_pT-1);
 
-    R_limits(pT,y,&R,&Rmin,&Rmax);
+    R_limits(pT,y,&R,&Rmin,&Rmax); // calculation
 
     if (progress) { printf(" pT = %.5e , [%2.2f%]\n", y , 100.*frac); }
     fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", pT, R, Rmin, Rmax );
+
     pT += step;
   }
 
@@ -397,7 +436,7 @@ void R_FB(double y) { // Forward:backward prod. ratio
     R_limits(pT,-y,&Rb,&Rbmin,&Rbmax);
 
     if (progress) { printf(" pT = %.5e , [%2.2f%]\n", y , 100.*frac); }
-    fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", pT, Rf/Rb, Rfmin/Rbmax, Rfmax/Rbmin );
+    fprintf( out, "%.8e   %.8e   %.8e   %.8e\n", pT, Rf/Rb, Rfmin/Rbmin, Rfmax/Rbmax );
     pT += step;
   }
 
@@ -423,8 +462,8 @@ void R_Casimir(double pT, double y) { // function of global final colour
   fprintf(out,"# columns: C_R, R_ave, R_min, R_max\n");
 
   // Here are some parameters that can be changed:
-  N_CR=60; 
-  CR_min=0.;
+  N_CR=80; 
+  CR_min=-20.;
   CR_max=20.;
   // don't change anything after that.
 
@@ -438,9 +477,9 @@ void R_Casimir(double pT, double y) { // function of global final colour
     frac = (double)i/(double)(N_CR-1);
     Fc = Cf + CR - Cf;
 
-    RpA_FCEL(Fc,pT,y-1.,dsig,S,&R_minus);
+    RpA_FCEL(Fc,pT,y-.5,dsig,S,&R_minus);
     RpA_FCEL(Fc,pT,y,dsig,S,&R);
-    RpA_FCEL(Fc,pT,y+1.,dsig,S,&R_plus);
+    RpA_FCEL(Fc,pT,y+.5,dsig,S,&R_plus);
 
     if (progress) { printf(" pT = %.5e, y = %.5e , [%2.2f%]\n", pT, y , 100.*frac); }
     fprintf( out, "%.8e   %.8e   %.8e    %.8e\n", CR, R, R_minus, R_plus );
