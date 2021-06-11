@@ -60,8 +60,8 @@ void R_scan_y(double pT, char H) {
   int N_y;
   double R, Rmin, Rmax, y, y_min, y_max, step, dummy;
 
-  //char *prefix=(char*)"out/RpO_";
-  char *prefix=(char*)"out/RpA_GJ_";
+  char *prefix=(char*)"out/RpO_";
+  //char *prefix=(char*)"out/RpA_GJ_";
   char  suffix[20];
   char  filename[50];
 
@@ -75,12 +75,12 @@ void R_scan_y(double pT, char H) {
   fprintf(out,"# columns: y, R_ave, R_min, R_max\n");
 
   // Here are some parameters that can be changed:
-  //N_y=200; 
-  //y_min=-6.;
-  //y_max=+6.;
-  N_y=21; 
-  y_min=-5.;
-  y_max=+5.;
+  N_y=200; 
+  y_min=-6.;
+  y_max=+6.;
+  //N_y=21; 
+  //y_min=-5.;
+  //y_max=+5.;
   // don't change anything after that.
 
   step=(y_max-y_min)/((double) N_y-1);

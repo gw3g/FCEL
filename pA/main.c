@@ -372,7 +372,7 @@ int main() {
   //meson = 'B';
 
   {
-    channel(2); // g, g -> q, q
+    channel(1); // g, g -> q, q
 
     R_scan_y(1.,meson);
     R_scan_y(2.,meson);
