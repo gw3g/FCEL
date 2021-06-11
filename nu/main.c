@@ -66,34 +66,39 @@ void Zpc_FCEL(Fc,E,dsig,phi,params,res)
 
   double _inner(double xF, void *params_inner) {
     // xF ~ x1-x2 (?)
-    double x  = ((double *)params_inner)[0];
-    double Ep = fabs(E)*(1.+x)/xF;
+    double zz  = ((double *)params_inner)[0];
+    double Ep = fabs(E)/(zz*xF);
     return dsig(Ep,xF)*phi(Ep)/(xF*phi(fabs(E)));
   };
 
-  double _outer(double x, void *params_outer) {
+  double _outer(double zz, void *params_outer) {
     double A  = ((double *)params_outer)[0];
     double B  = ((double *)params_outer)[1];
     double C  = ((double *)params_outer)[2];
 
-    double  res_inner,
-            P = phat(x,A,B,C);
+    double xx;
+    if (Fc>0) { xx = (1.-zz)/zz; }
+    else if (Fc<0) { xx = (zz-1.)/zz; }
 
-    double in[1] = {x}; // x = eps/E
+    double  res_inner,
+            P = phat(xx,A,B,C)/SQR(zz);
+
+    double in[1] = {zz}; // x = eps/E, zz = 1/(x+1)
     integrator(1e-8,1.,_inner,in,&res_inner,&err);
     return res_inner*P;
   };
 
-  double inn[1] = {0.}; // to calc. Zpc w/o FCEL
+  double inn[1] = {1.}; // to calc. Zpc w/o FCEL
   integrator(1e-8,1.,_inner,inn,&denom,&err);
 
   if ((E<0.)||(fabs(Fc)<tol)) { *res = denom; /*printf("E<0: %.5e\n", denom);*/ return;}
   //else if (fabs(Fc)<tol) {*res=1.; return;} // no mods.
 
-  if (Fc<0) { printf("FCEG still to be implemented\n"); return; }
+  //if (Fc<0) { printf("FCEG still to be implemented\n"); return; }
 
   double out[3] = {SQR(Qs_M),SQR(Qsp_M),fabs(Fc)*as};
-  integrator(0.,x_max,_outer,out,&res_outer,&err);
+  if (Fc>0) { integrator(.5,1.,_outer,out,&res_outer,&err); }
+  else if (Fc<0) { integrator(1.00001,2.,_outer,out,&res_outer,&err); }
   *res = res_outer; //printf("E>0: %.5e\n", res_outer);
 }
 
@@ -104,9 +109,11 @@ double Z_sum_( double E, // neutrino energy (in GeV)
   double Fc, temp, prob, res=.0,
          xi  = ((double *)params)[1];
 
+  //int i=0;
   for (int i=0;i<IRREPS;i++) {
     prob = reps[i](xi,&Fc);
     Zpc_FCEL(Fc,E,dsig,phi,params,&temp);
+    printf("%d: temp = %g\n",i,temp);
     res += prob*temp;
   };
 
@@ -121,21 +128,21 @@ double rFCEL_scaling(void *params) {
 /*--------------------------------------------------------------------*/
 
 int main() {
-  channel(3);
+  channel(2);
   double Fc;
   printf("IRREPS = %d\n", IRREPS );
 
   //Z_scan_g();
   //Z_scan_k();
-  //r_scan_E(dsig_2,phi_H3a,"out/r_nu_FCEL_H3a");
-  r_scan_E(dsig_2,phi_knee,"out/r_nu_FCEL_knee");
-  //r_scan_E(dsig_2,phi_GSF,"out/r_nu_FCEL_GSF");
-  /*g = 2.7;
-  r_scan_E(dsig_1,phi_SP,"out/r_nu_scaling1");
+  r_scan_E(dsig_2,phi_H3a,"out/r_nu_FCEL_H3a_");
+  r_scan_E(dsig_2,phi_knee,"out/r_nu_FCEL_knee_");
+  r_scan_E(dsig_2,phi_GSF,"out/r_nu_FCEL_GSF_");
+  g = 2.7;
+  r_scan_E(dsig_1,phi_SP,"out/r_nu_scaling1_");
   g = 3.;
-  r_scan_E(dsig_1,phi_SP,"out/r_nu_scaling2");
+  r_scan_E(dsig_1,phi_SP,"out/r_nu_scaling2_");
   g = 3.4;
-  r_scan_E(dsig_1,phi_SP,"out/r_nu_scaling3");//*/
+  r_scan_E(dsig_1,phi_SP,"out/r_nu_scaling3_");//*/
 
   return 0;
 }
@@ -149,7 +156,7 @@ void r_scan_E( double (*dsig)(double,double),
   double E, Emin, Emax, step,
          Z_orig, Z_fcel;
 
-  double kT = 0., x2 = 1e-5, xi = .5, qhat = .07, m = 1.5;
+  double kT = 2., x2 = 1e-5, xi = .5, qhat = .07, m = 0.0;
   double alpha_s = .5;
 
   //char *prefix=(char*)"r_FCEL2_E";
@@ -159,6 +166,7 @@ void r_scan_E( double (*dsig)(double,double),
   // filename
   strcpy(filename,prefix);
   sprintf(suffix,"_{kT=%.2f,x2=%g}.dat",kT,x2);
+  strcat(filename,reaction);
   strcat(filename,suffix);
   out=fopen(filename,"w");
   fprintf(out,"# FCEL, xi=%g, alpha=%g\n",xi,alpha_s);
