@@ -5,7 +5,7 @@
  *--------------------------------------------------------------------*/
 
 double dsig_1(double E, double xF) { // scaling function
-  if (xF>1.) {return 1e-12;}
+  if (xF>1.) {return 1e-16;}
   return pow(1.-xF,6.)/xF;
 }
 

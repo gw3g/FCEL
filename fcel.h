@@ -166,10 +166,12 @@ double phat(double x, double A, double B, double C) {
 #define L_p 1.5 // fm, sets 'units'
 #define L_eff(A) (double) L_p*1.12*pow(A,1./3.) // HS approx.
 
+double lam = .3;
+
 double Qs2(double L, double q0, double x2) {
   // broadening [GeV^2]
   double xtilde = hbarc/(2.*mp*L);
-  return L*q0*pow( .01/fmin(xtilde,x2) , .3 );
+  return L*q0*pow( .01/fmin(xtilde,x2) , lam );
 }
 
 /*--------------------------------------------------------------------*/

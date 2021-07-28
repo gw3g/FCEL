@@ -1043,5 +1043,5 @@ double phi_GSF(double Ep) { // using Dembinski's table (ICRC2017)
       return GSF_data[i+1].phi*slope + GSF_data[i].phi*(1.-slope);
     }
   }
-  return 1e-34;
+  return 0.;
 }
