@@ -25,7 +25,7 @@ void r_scan_E(double(*)(double,double),double(*)(double),char*);
 /*--------------------------------------------------------------------*/
 
 #include <gsl/gsl_integration.h>
-size_t calls=1e7; double tol=1e-6;
+size_t calls=1e7; double tol=1e-4;
 
 void integrator(a,b,func,params,res,err)
   double a, b;
@@ -64,42 +64,49 @@ void Zpc_FCEL(Fc,E,dsig,phi,params,res)
   double res_outer, err, denom;
   double Qsp_M = Qs_M/Qs_Qsp;
 
-  double _inner(double xF, void *params_inner) {
-    // xF ~ x1-x2 (?)
-    double zz  = ((double *)params_inner)[0];
-    double Ep = fabs(E)/(zz*xF);
-    //if ( Ep > 9.832e10 ) return 0.;
-    return dsig(Ep,xF)*phi(Ep)/(xF*phi(fabs(E)));
+  double _inner(double x, void *params_inner) {
+
+    double zz = pow(1.+x,-SGN(Fc)); // rescaling variable:
+                                    // x = eps/E, zz = 1/(x+1) OR zz = (x+1)
+
+    double A  = ((double *)params_inner)[0];
+    double B  = ((double *)params_inner)[1];
+    double C  = ((double *)params_inner)[2];
+    double xF = ((double *)params_inner)[3];
+
+    double P = phat(x, A, B, C); // quenchin weight
+    double Ep = fabs(E)/(xF);    // proton energy
+
+    if ( Ep > 9.832e10 ) return 0.; // GZK cutoff (?)
+
+    return dsig(Ep,xF/zz)*P;
   };
 
-  double _outer(double x, void *params_outer) {
+  double _outer(double xF, void *params_outer) {
     double A  = ((double *)params_outer)[0];
     double B  = ((double *)params_outer)[1];
     double C  = ((double *)params_outer)[2];
 
-    //double  res_inner, P = phat(x, A, B, C);
-    //ouble zz = pow(1.+x,-SGN(Fc));
+    double Ep = fabs(E)/(xF);
 
-    double res_inner, P = phat(-1.+1./x, A, B, C);
-    double zz = pow(x,+SGN(Fc));
+    double  res_inner;
 
-    double in[1] = { zz }; // x = eps/E, zz = 1/(x+1) OR zz = (x+1)
-    integrator(1e-12,fmin(1.,1./zz),_inner,in,&res_inner,&err);
-    return res_inner*P/SQR(x);
+    x_max = 1./xF - 1.; // xF < 1
+
+    double in[4] = { A, B, C, xF }; 
+
+    if ((E<0)||(fabs(Fc)<1e-1)) { res_inner = dsig(Ep,xF); }
+    else if (E>0) {
+      integrator(0.,x_max,_inner,in,&res_inner,&err);
+    }
+
+    return res_inner*phi(Ep)/(xF*phi(fabs(E)));
   };
-
-  double inn[1] = {1.}; // to calc. Zpc w/o FCEL
-  integrator(1e-12,1.,_inner,inn,&denom,&err);
-
-  if ((E<0.)||(fabs(Fc)<tol)) { *res = denom; /*printf("E<0: %.5e\n", denom);*/ return;}
-  //else if (fabs(Fc)<tol) {*res=1.; return;} // no mods.
-
-  //if (Fc<0) { printf("FCEG still to be implemented\n"); return; }
-
   double out[3] = {SQR(Qs_M),SQR(Qsp_M),fabs(Fc)*as};
-  if (Fc>0) { integrator(1e-12,1.,_outer,out,&res_outer,&err); }
-  else if (Fc<0) { integrator(1e-12,1.,_outer,out,&res_outer,&err); }
-  *res = res_outer; //printf("res: %.5e\n", res_outer);
+
+  integrator(0.,1.,_outer,out,&res_outer,&err);
+
+  *res = res_outer; //printf("res: %.5e , err: %.5e\n", res_outer, err);
 }
 
 double Z_sum_( double E, // neutrino energy (in GeV)
@@ -136,16 +143,16 @@ int main() {
 
   //Z_scan_g();
   //Z_scan_k();
-  //r_scan_E(dsig_1,phi_H3a,"out/r2_nu_FCEL_H3a_");
-  //r_scan_E(dsig_1,phi_knee,"out/r2_nu_FCEL_knee_");
-  //r_scan_E(dsig_1,phi_GSF,"out/r2_nu_FCEL_GSF_");
-  //lam = .2;
+  r_scan_E(dsig_1,phi_H3a,"out/Rnu_prompt_H3a_");
+  r_scan_E(dsig_1,phi_knee,"out/Rnu_prompt_knee_");
+  r_scan_E(dsig_1,phi_GSF,"out/Rnu_prompt_GSF_");
+  lam = .3;
   g = 2.7;
-  r_scan_E(dsig_1,phi_SP,"out/r2_nu_scaling1_");
+  r_scan_E(dsig_1,phi_SP,"out/Rnu_prompt_scaling1_");
   g = 3.;
-  r_scan_E(dsig_1,phi_SP,"out/r2_nu_scaling2_");
+  r_scan_E(dsig_1,phi_SP,"out/Rnu_prompt_scaling2_");
   g = 3.4;
-  r_scan_E(dsig_1,phi_SP,"out/r2_nu_scaling3_");//*/
+  r_scan_E(dsig_1,phi_SP,"out/Rnu_prompt_scaling3_");//*/
 
   return 0;
 }
@@ -169,8 +176,8 @@ void r_scan_E( double (*dsig)(double,double),
 
   // filename
   strcpy(filename,prefix);
-  sprintf(suffix,"_{kT=%.2f,x2=%g}.dat",kT,x2);
-  //sprintf(suffix,"_{kT=%.2f}.dat",kT);
+  //sprintf(suffix,"_{kT=%.2f,x2=%g}.dat",kT,x2);
+  sprintf(suffix,"_{kT=%.2f}.dat",kT);
   strcat(filename,reaction);
   strcat(filename,suffix);
   out=fopen(filename,"w");
@@ -189,7 +196,7 @@ void r_scan_E( double (*dsig)(double,double),
   params[2] = sqrt(L_eff(14.5)/L_p);
 
   // Here are some parameters that can be changed:
-  N_E=400; 
+  N_E=40; 
   Emin=1e3;
   Emax=1e10;
   // don't change anything after that.
@@ -205,7 +212,7 @@ void r_scan_E( double (*dsig)(double,double),
 
     printf(" E = %.5e , [%2.2f%]\n", E, 100.*frac); 
 
-    //x2 = M2/(2.*mp*E); // proper def.
+    x2 = M2/(4.*mp*E); // proper def. (?)
     Q2A  = Qs2(L_eff(14.5),qhat,x2);
     params[1] = sqrt(Q2A/M2);
     Z_orig = Z_sum_(-E,dsig,phi,params);
