@@ -196,8 +196,8 @@ void r_scan_E( double (*dsig)(double,double),
   params[2] = sqrt(L_eff(14.5)/L_p);
 
   // Here are some parameters that can be changed:
-  N_E=40; 
-  Emin=1e3;
+  N_E=100; 
+  Emin=1e2;
   Emax=1e10;
   // don't change anything after that.
 

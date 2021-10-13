@@ -352,17 +352,17 @@ int main() {
   A = 16.;     // Pb
   alpha_s = 0.5;// coupling
 
-  //S[2] = 0.8;  dS[2] = 0.2;// z -- frag. variable
-  //S[3] = 4.0;  dS[3] = 1.0;// n -- exponent
-  //S[4] = 1.3;  dS[4] = 0.2;// eff. quark mass
-  //MU = mu_D;
-  //meson = 'D';
+  S[2] = 0.8;  dS[2] = 0.2;// z -- frag. variable
+  S[3] = 4.0;  dS[3] = 1.0;// n -- exponent
+  S[4] = 1.3;  dS[4] = 0.2;// eff. quark mass
+  MU = mu_D;
+  meson = 'D';
 
-  S[2] = 0.7;  dS[2] = 0.2;// z -- frag. variable
-  S[3] = 15.0;  dS[3] = 5.0;// n -- exponent
-  S[4] = 0.0;  dS[4] = 0.0;// eff. quark mass
-  MU = 0;
-  meson = 'h';
+  //S[2] = 0.7;  dS[2] = 0.2;// z -- frag. variable
+  //S[3] = 15.0;  dS[3] = 5.0;// n -- exponent
+  //S[4] = 0.0;  dS[4] = 0.0;// eff. quark mass
+  //MU = 0;
+  //meson = 'h';
 
 
   //S[2] = 0.9;  dS[2] = 0.1;// z -- frag. variable
@@ -372,7 +372,8 @@ int main() {
   //meson = 'B';
 
   {
-    channel(1); // g, g -> q, q
+    //channel(1); // g, g -> g, g
+    channel(4); // g, g -> q, q
 
     R_scan_y(1.,meson);
     R_scan_y(2.,meson);
