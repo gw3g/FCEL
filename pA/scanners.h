@@ -243,3 +243,69 @@ void R_Casimir(double pT, double y) { // function of global final colour
   printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);
 }
 
+/*--------------------------------------------------------------------*/
+
+void R_rel_uncertainty(double pT, char H) {
+  int N_y;
+  double R, Rp, Rm, y, y_min, y_max, step, dummy;
+
+  //double dS[5] = {.02,.25,.2,1.,0.2};
+  //double  S[5] = {.07,.50,.8,4.,1.3};
+  double dS[5] = {.02,.25,.2,5.,0.0};
+  double  S[5] = {.07,.50,.6,15.,0.0};
+
+  char *prefix=(char*)"out/RelError_pO_";
+  //char *prefix=(char*)"out/RpA_GJ_";
+  char  suffix[20];
+  char  filename[50];
+
+  // filename
+  strcpy(filename,prefix);
+  sprintf(suffix,"_{rs=%.2f,pT=%.1f}_%c.dat",SQRTS,pT,H);
+  strcat(filename,reaction);
+  strcat(filename,suffix);
+  out=fopen(filename,"w");
+  fprintf(out,"# R_pA, A=%.1f, alpha=%g\n",A,alpha_s);
+  fprintf(out,"# columns: y, R, R(qhat-), R(qhat+), R(xi-), R(xi+), R(z-), R(z+), R(n-), R(n+), R(m-), R(m+) \n");
+
+  // Here are some parameters that can be changed:
+  N_y=200; 
+  y_min=-6.;
+  y_max=+6.;
+  //N_y=21; 
+  //y_min=-5.;
+  //y_max=+5.;
+  // don't change anything after that.
+
+  step=(y_max-y_min)/((double) N_y-1);
+  y=y_min;
+
+  if (progress) { printf(" Settings: pT=%g, with y_min=%g, y_max=%g\n",pT,y_min,y_max); }
+  double frac;
+
+  for (int i=0; i<N_y; i++) {
+    frac = (double)i/(double)(N_y-1);
+    fprintf( out, "%.8e   ", y);
+
+    R = R_sum_(pT,y,S); 
+    fprintf( out, "%.8e", R);
+
+    for (int j=0; j<5; j++) {
+      S[j] += dS[j];
+      Rp = R_sum_(pT,y,S); 
+      S[j] -= 2.*dS[j];
+      Rm = R_sum_(pT,y,S); 
+      S[j] += dS[j];
+      fprintf( out, "   %.8e   %.8e", Rm, Rp);
+    }
+    fprintf( out, "\n", Rm, Rp);
+
+    if (progress) { printf(" y = %.5e , [%2.2f%]\n", y , 100.*frac); }
+
+    y += step;
+  }
+
+  printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);
+}
+
+
