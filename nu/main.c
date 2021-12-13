@@ -14,18 +14,19 @@
 #include "sigma.h"
 #include "crflux.h"
 double g; // spectral index
-double x_max = 1.; // soft-gluon approx. ?
+double x_max = 1000.; // soft-gluon approx. ?
 FILE *in;
 FILE *out;
 
 void Z_scan_g();
 void Z_scan_k();
 void r_scan_E(double(*)(double,double),double(*)(double),char*);
+void r_errors(double,char*);
 
 /*--------------------------------------------------------------------*/
 
 #include <gsl/gsl_integration.h>
-size_t calls=1e7; double tol=1e-4;
+size_t calls=1e7; double tol=1e-3;
 
 void integrator(a,b,func,params,res,err)
   double a, b;
@@ -114,7 +115,7 @@ double Z_sum_( double E, // neutrino energy (in GeV)
                void *params) {
 
   double Fc, temp, prob, res=.0,
-         xi  = ((double *)params)[1];
+         xi  = ((double *)params)[3];
 
   //int i=0;
   for (int i=0;i<IRREPS;i++) {
@@ -133,9 +134,75 @@ double rFCEL_scaling(void *params) {
 }
 
 /*--------------------------------------------------------------------*/
+// Hessian method
+//
+#define PARAMS 4  //  q0, xi, Kt, m_Q
+double dS[PARAMS] = {.02,.25,.5,0.2};
+double  S[PARAMS] = {.07,.50,2.,1.3};
+
+double R_nu(double E, void *params) {
+  double Fc, temp, prob, res=.0,
+         alpha_s = .5,
+         qhat= ((double *)params)[0],
+         xi  = ((double *)params)[1],
+         kT  = ((double *)params)[2],
+         m   = ((double *)params)[3];
+
+  double as   = alpha_s*ootp,
+         M2   = ( SQR(kT) + SQR(m) )/( xi*(1.-xi) ),
+         Q2A  ;//= Qs2(L_eff(14.5),qhat,x2);
+
+  double x2 = ( SQR(kT) + SQR(m) )/(mp*E); // proper def. (?)
+  Q2A  = Qs2(L_eff(14.5),qhat,x2);
+
+  double new_params[4];
+  new_params[0] = as;
+  new_params[1] = sqrt(Q2A/M2);
+  new_params[2] = sqrt(L_eff(14.5)/L_p);
+  new_params[3] = xi;
+
+  res = rFCEL_scaling(new_params);
+
+  return res;
+}
+
+
+void R_limits(double E, 
+              double *R_ave, double *R_min, double *R_max) {
+
+  double Sp[PARAMS], Sm[PARAMS], res1=0.,res2=0.,
+         RSp,        RSm,        RS = R_nu(E,S);
+
+  memcpy(Sp,S,sizeof(double)*PARAMS);
+  memcpy(Sm,S,sizeof(double)*PARAMS);
+
+  for (int k=0; k<PARAMS; k++) {
+
+    // modify running arrays ...
+    Sp[k]+=dS[k]; Sm[k]-=dS[k];
+
+    RSp = R_nu(E,Sp); RSm = R_nu(E,Sm);
+
+    res1+= SQR( fmax( fmax( RSp-RS, RSm-RS ), 0. ) );
+    res2+= SQR( fmax( fmax( RS-RSp, RS-RSm ), 0. ) );
+
+    // ... undo those mods.
+    Sp[k]-=dS[k]; Sm[k]+=dS[k];
+  };
+
+  *R_ave = RS;
+  *R_max = RS + sqrt(res1);
+  *R_min = RS - sqrt(res2);
+}
+
+
+/*--------------------------------------------------------------------*/
 
 int main() {
-  channel(4);
+  //channel(1); // gg - gg
+  //channel(2); // qg - qg
+  //channel(4); // gg - qq
+  channel(5); // qq - QQ
   double Fc;
   printf("IRREPS = %d\n", IRREPS );
 
@@ -143,16 +210,22 @@ int main() {
 
   //Z_scan_g();
   //Z_scan_k();
-  r_scan_E(dsig_1,phi_H3a,"out/Rnu_prompt_H3a_");
-  r_scan_E(dsig_1,phi_knee,"out/Rnu_prompt_knee_");
-  r_scan_E(dsig_1,phi_GSF,"out/Rnu_prompt_GSF_");
+  //r_scan_E(dsig_3,phi_H3a,"out/Rnu_prompt_H3a_");
+  //r_scan_E(dsig_3,phi_knee,"out/Rnu_prompt_knee_");
+  //r_scan_E(dsig_3,phi_GSF,"out/Rnu_prompt_GSF_");
   lam = .3;
+  g = 2.0;
+  r_scan_E(dsig_1,phi_SP,"out/Rnu_prompt_scaling0_");
   g = 2.7;
   r_scan_E(dsig_1,phi_SP,"out/Rnu_prompt_scaling1_");
   g = 3.;
   r_scan_E(dsig_1,phi_SP,"out/Rnu_prompt_scaling2_");
   g = 3.4;
-  r_scan_E(dsig_1,phi_SP,"out/Rnu_prompt_scaling3_");//*/
+  r_scan_E(dsig_1,phi_SP,"out/Rnu_prompt_scaling3_");
+  g = 3.6;
+  r_scan_E(dsig_1,phi_SP,"out/Rnu_prompt_scaling4_");//*/
+  //g = 3.0;
+  //r_errors(g,"out/Rnu_uncertainty_scaling_");
 
   return 0;
 }
@@ -191,9 +264,10 @@ void r_scan_E( double (*dsig)(double,double),
          M2   = ( SQR(kT) + SQR(m) )/( xi*(1.-xi) ),
          Q2A  ;//= Qs2(L_eff(14.5),qhat,x2);
 
-  double params[3]; //= {as,sqrt(Q2A/M2),sqrt(L_eff(14.5)/L_p)};
+  double params[4]; //= {as,sqrt(Q2A/M2),sqrt(L_eff(14.5)/L_p),xi};
   params[0] = as;
   params[2] = sqrt(L_eff(14.5)/L_p);
+  params[3] = .5;
 
   // Here are some parameters that can be changed:
   N_E=100; 
@@ -226,6 +300,69 @@ void r_scan_E( double (*dsig)(double,double),
 
   printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);
 }
+
+void r_errors(double ga, char *prefix) {
+  g=ga;
+  int N_E;
+  double E, Emin, Emax, step,
+         R, Rmin, Rmax;
+
+  double alpha_s = .5;
+
+  //char *prefix=(char*)"r_FCEL2_E";
+  char  suffix[20];
+  char  filename[50];
+
+  // filename
+  strcpy(filename,prefix);
+  sprintf(suffix,".dat");
+  strcat(filename,reaction);
+  strcat(filename,suffix);
+  out=fopen(filename,"w");
+  fprintf(out,"# FCEL scaling, gamma=%g, [Hessian Method]\n",ga);
+  fprintf(out,"# columns: E/GeV, R, R_min, R_max, R(qhat-), R(qhat+), R(xi-), R(xi+), R(kt-), R(kt+), R(m-), R(m+) \n");
+
+  double res_outer, err;
+
+  // Here are some parameters that can be changed:
+  N_E=100; 
+  Emin=1e2;
+  Emax=1e10;
+  // don't change anything after that.
+
+  printf("Settings: gamma = %2.2f \n",ga); 
+  double frac;
+
+  E = Emin;
+  step=pow(Emax/Emin,1./(double)(N_E-1));
+
+  for (int i=0;i<N_E;i++) { 
+    frac = (double)i/(double)(N_E-1);
+
+    printf(" E = %.5e , [%2.2f%]\n", E, 100.*frac); 
+
+    R_limits(E,&R,&Rmin,&Rmax); // calculation
+
+    //printf( "%.8e   %.8e   %.8e\n", E, Z_orig, Z_fcel);
+    fprintf( out, "%.8e   %.8e   %.8e   %.8e", E, R, Rmin, Rmax );
+
+    for (int j=0; j<4; j++) {
+      S[j] += dS[j];
+      Rmin = R_nu(E,S); 
+      S[j] -= 2.*dS[j];
+      Rmax = R_nu(E,S); 
+      S[j] += dS[j];
+      fprintf( out, "   %.8e   %.8e", Rmin, Rmax);
+    }
+    fprintf( out, "\n");
+
+
+    E *= step;
+  }
+
+  printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);
+}
+
 
 void Z_scan_g() {
   double gmin, gmax, dg;
