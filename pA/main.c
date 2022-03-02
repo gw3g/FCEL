@@ -25,6 +25,7 @@ double MU   = mu_D;
 //FILE *in;
 FILE *out;
 void R_reps(double,char);   // pT input
+void R_scan_full(char);
 void R_scan_y(double,char) ;// pT fixed
 void R_scan_pT(double,char);// y  fixed
 void R_scan_yintegrated(double,double,char);
@@ -233,6 +234,43 @@ void R_limits(double pT, double y, double *R_ave, double *R_min, double *R_max) 
   *R_min = RS - sqrt(res2);
 }
 
+void double_R(double pT, double y, double *R_ave, double *R_min, double *R_max) {
+  double Sp[PARAMS], Sm[PARAMS], res1=0.,res2=0.,
+         RSp,        RSm,        RS;// = R_sum_(pT,y,S);
+
+  // apply Hessian method to the double ratio RpA(\sqrt{s}=8.16TeV)/RpA(\sqrt{s}=5.02TeV)
+  SQRTS = 8.16;
+  RS = R_sum_(pT,y,S);
+  SQRTS = 5.02;
+  RS = RS/R_sum_(pT,y,S);
+
+  memcpy(Sp,S,sizeof(double)*PARAMS);
+  memcpy(Sm,S,sizeof(double)*PARAMS);
+
+  for (int k=0; k<PARAMS; k++) {
+
+    // modify running arrays ...
+    Sp[k]+=dS[k]; Sm[k]-=dS[k];
+
+    SQRTS = 8.16;
+    RSp = R_sum_(pT,y,Sp); 
+    RSm = R_sum_(pT,y,Sm);
+    SQRTS = 5.02;
+    RSp = RSp/R_sum_(pT,y,Sp);
+    RSm = RSm/R_sum_(pT,y,Sm);
+
+    res1+= SQR( fmax( fmax( RSp-RS, RSm-RS ), 0. ) );
+    res2+= SQR( fmax( fmax( RS-RSp, RS-RSm ), 0. ) );
+
+    // ... undo those mods.
+    Sp[k]-=dS[k]; Sm[k]+=dS[k];
+  };
+
+  *R_ave = RS;
+  *R_max = RS + sqrt(res1);
+  *R_min = RS - sqrt(res2);
+}
+
 void R_integrated(double pT, double y_min, double y_max, 
                   double *R_ave, double *R_min, double *R_max) {
 
@@ -249,9 +287,15 @@ void R_integrated(double pT, double y_min, double y_max,
     return XS_pp(pT,y,dsig,params);
   };
 
+  // Forward:
   integrator(y_min,y_max,_pA,S,&numerator_S,&err);
   integrator(y_min,y_max,_pp,S,&denominator_S,&err);
   RS = numerator_S/denominator_S;
+
+  // Backward:
+  integrator(-y_max,-y_min,_pA,S,&numerator_S,&err);
+  integrator(-y_max,-y_min,_pp,S,&denominator_S,&err);
+  RS = RS/(numerator_S/denominator_S);
 
   memcpy(Sp,S,sizeof(double)*PARAMS);
   memcpy(Sm,S,sizeof(double)*PARAMS);
@@ -261,13 +305,23 @@ void R_integrated(double pT, double y_min, double y_max,
     // modify running arrays ...
     Sp[k]+=dS[k]; Sm[k]-=dS[k];
 
+    // Forward:
     integrator(y_min,y_max,_pA,Sp,&numerator_Sp,&err);
     integrator(y_min,y_max,_pp,Sp,&denominator_Sp,&err);
     RSp = numerator_Sp/denominator_Sp;
+    // Backward:
+    integrator(-y_max,-y_min,_pA,Sp,&numerator_Sp,&err);
+    integrator(-y_max,-y_min,_pp,Sp,&denominator_Sp,&err);
+    RSp = RS/(numerator_Sp/denominator_Sp);
 
+    // Forward:
     integrator(y_min,y_max,_pA,Sm,&numerator_Sm,&err);
     integrator(y_min,y_max,_pp,Sm,&denominator_Sm,&err);
     RSm = numerator_Sm/denominator_Sm;
+    // Forward:
+    integrator(-y_max,-y_min,_pA,Sm,&numerator_Sm,&err);
+    integrator(-y_max,-y_min,_pp,Sm,&denominator_Sm,&err);
+    RSm = RSm/(numerator_Sm/denominator_Sm);
 
     res1+= SQR( fmax( fmax( RSp-RS, RSm-RS ), 0. ) );
     res2+= SQR( fmax( fmax( RS-RSp, RS-RSm ), 0. ) );
@@ -342,15 +396,15 @@ int main() {
 
   // >> LCHb, 5 TeV D0 <<
 
-  //SQRTS = 5.02; // TeV
+  SQRTS = 5.02; // TeV
   //SQRTS = 8.16; // TeV
-  //A = 208.;     // Pb
-  //alpha_s = 0.5;// coupling
+  A = 208.;     // Pb
+  alpha_s = 0.5;// coupling
 
   // OXYGEN
-  SQRTS = 9.9; // TeV
-  A = 16.;     // Pb
-  alpha_s = 0.5;// coupling
+  //SQRTS = 9.9; // TeV
+  //A = 16.;     // Pb
+  //alpha_s = 0.5;// coupling
 
   S[2] = 0.8;  dS[2] = 0.2;// z -- frag. variable
   S[3] = 4.0;  dS[3] = 1.0;// n -- exponent
@@ -374,12 +428,13 @@ int main() {
   {
     //channel(1); // g, g -> g, g
     channel(4); // g, g -> q, q
+    //R_scan_full(meson);
 
-    R_scan_y(1.,meson);
-    R_scan_y(2.,meson);
-    R_scan_y(3.,meson);
-    R_scan_y(4.,meson);
-    R_scan_y(5.,meson);
+    //R_scan_y(1.,meson);
+    //R_scan_y(2.,meson);
+    //R_scan_y(3.,meson);
+    //R_scan_y(4.,meson);
+    //R_scan_y(5.,meson);
     //R_scan_pT(3,meson);
     //R_scan_pT(-4,meson);
     //R_scan_pT(-2,meson);
@@ -394,7 +449,7 @@ int main() {
     //R_scan_y(0.,meson);
     //R_scan_y(1.,meson);
     //R_scan_y(2.,meson);
-    //R_scan_yintegrated(2.5,3.5,meson);
+    R_scan_yintegrated(2.5,4.,meson);
   }//*/
 
 

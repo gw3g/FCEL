@@ -56,6 +56,74 @@ void R_reps(double pT, char H) {
 
 }
 
+void R_scan_full(char H) {
+  int N_y, N_pT;
+  double R, Rmin, Rmax, 
+         y, y_min, y_max, 
+         pT, pT_min, pT_max,
+         step_y, step_pT, dummy;
+
+  //char *prefix=(char*)"out/RpA_";
+  char *prefix=(char*)"out/RoR_";
+  char  suffix[20];
+  char  filename[50];
+
+  // filename
+  strcpy(filename,prefix);
+  //sprintf(suffix,"_{sqrs=%.2f}_%c.dat",SQRTS,H);
+  sprintf(suffix,"_%c.dat",H);
+  strcat(filename,reaction);
+  strcat(filename,suffix);
+  out=fopen(filename,"w");
+  //fprintf(out,"# R_pA, A=%.1f, alpha=%g\n",A,alpha_s);
+  fprintf(out,"# R-over-R = R_pA(8.16TeV)/RpA(5.02TeV), A=%.1f, alpha=%g\n",A,alpha_s);
+  fprintf(out,"# Columns:\n");
+  fprintf(out,"# pT/GeV, y, R_ave, R_min, R_max\n");
+
+  // Here are some parameters that can be changed:
+  N_pT    = 101; 
+  pT_min  = 0.;
+  pT_max  = 10.;
+
+  N_y     = 241; 
+  y_min   = -6.;
+  y_max   = +6.;
+
+  //N_y=21; 
+  //y_min=-5.;
+  //y_max=+5.;
+  // don't change anything after that.
+
+  step_y =(y_max-y_min)/((double) N_y-1);
+  step_pT=(pT_max-pT_min)/((double) N_pT-1);
+
+  y  = y_min;
+  pT = pT_min;
+
+  if (progress) { printf(" Settings: sqrs=%g, with y_min=%g,  y_max=%g\n",SQRTS,y_min,y_max); }
+  if (progress) { printf("                         pT_min=%g, pT_max=%g\n\n",pT_min,pT_max); }
+  double frac;
+
+  for (int j=0; j<N_pT; j++) {
+    for (int i=0; i<N_y; i++) {
+      frac = ((double)j*(double)N_y+(double)i)/(double)(N_y*N_pT-1);
+      if (progress) { printf(" pT = %.5e GeV, y = %.5e , [%2.2f%]\n", pT, y, 100.*frac); }
+
+      //R_limits(pT,y,&R,&Rmin,&Rmax); // calculation
+      double_R(pT,y,&R,&Rmin,&Rmax); // calculation
+
+      fprintf( out, "%.8e   %.8e   %.8e   %.8e   %.8e\n", pT, y, R, Rmin, Rmax);
+
+      y += step_y;
+    }
+    y = y_min;
+    pT += step_pT;
+  }
+
+  printf(" Saved to file ["); printf(filename); printf("]\n"); fclose(out);
+}
+
+
 void R_scan_y(double pT, char H) {
   int N_y;
   double R, Rmin, Rmax, y, y_min, y_max, step, dummy;
@@ -154,7 +222,8 @@ void R_scan_yintegrated(double y_min, double y_max, char H) {
   int N_pT;
   double R, Rmin, Rmax, pT, pT_min, pT_max, step, dummy;
 
-  char *prefix=(char*)"out/RpA_integrated_";
+  //char *prefix=(char*)"out/RpA_integrated_";
+  char *prefix=(char*)"out/RFB_integrated_";
   char  suffix[70];
   char  filename[100];
 
@@ -164,14 +233,15 @@ void R_scan_yintegrated(double y_min, double y_max, char H) {
   strcat(filename,reaction);
   strcat(filename,suffix);
   out=fopen(filename,"w");
-  fprintf(out,"# R_pA, A=%.1f, alpha=%g\n",A,alpha_s);
-  fprintf(out,"# columns: pT, R_ave, R_min, R_max\n");
+  fprintf(out,"# R_FB, A=%.1f, alpha=%g\n",A,alpha_s);
+  fprintf(out,"# Columns:\n");
+  fprintf(out,"# pT/GeV, R_ave, R_min, R_max\n");
 
   // Here are some parameters that can be changed:
   //N_pT=100; 
   //pT_min=.1;
   //pT_max=20.;
-  N_pT=21; 
+  N_pT=101; 
   pT_min=.0;
   pT_max=10.;
   // don't change anything after that.
