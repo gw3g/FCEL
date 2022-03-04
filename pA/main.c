@@ -278,6 +278,9 @@ void R_integrated(double pT, double y_min, double y_max,
          numerator_Sp,    numerator_Sm,    numerator_S,
          denominator_Sp,  denominator_Sm,  denominator_S,
          RS, RSp, RSm, err;// = R_sum_(pT,y,S)*XS_pp(pT,y,dsig,S);
+                           //
+  memcpy(Sp,S,sizeof(double)*PARAMS);
+  memcpy(Sm,S,sizeof(double)*PARAMS);
 
   double _pA(double y, void *params) {
     return R_sum_(pT,y,params)*XS_pp(pT,y,dsig,params);
@@ -297,8 +300,6 @@ void R_integrated(double pT, double y_min, double y_max,
   integrator(-y_max,-y_min,_pp,S,&denominator_S,&err);
   RS = RS/(numerator_S/denominator_S);
 
-  memcpy(Sp,S,sizeof(double)*PARAMS);
-  memcpy(Sm,S,sizeof(double)*PARAMS);
 
   for (int k=0; k<PARAMS; k++) {
 
@@ -312,7 +313,7 @@ void R_integrated(double pT, double y_min, double y_max,
     // Backward:
     integrator(-y_max,-y_min,_pA,Sp,&numerator_Sp,&err);
     integrator(-y_max,-y_min,_pp,Sp,&denominator_Sp,&err);
-    RSp = RS/(numerator_Sp/denominator_Sp);
+    RSp = RSp/(numerator_Sp/denominator_Sp);
 
     // Forward:
     integrator(y_min,y_max,_pA,Sm,&numerator_Sm,&err);
@@ -396,8 +397,8 @@ int main() {
 
   // >> LCHb, 5 TeV D0 <<
 
-  SQRTS = 5.02; // TeV
-  //SQRTS = 8.16; // TeV
+  //SQRTS = 5.02; // TeV
+  SQRTS = 8.16; // TeV
   A = 208.;     // Pb
   alpha_s = 0.5;// coupling
 
@@ -450,6 +451,7 @@ int main() {
     //R_scan_y(1.,meson);
     //R_scan_y(2.,meson);
     R_scan_yintegrated(2.5,4.,meson);
+    //R_scan_yintegrated(-4.,-2.5,meson);
   }//*/
 
 
