@@ -137,8 +137,8 @@ double rFCEL_scaling(void *params) {
 // Hessian method
 //
 #define PARAMS 4  //  q0, xi, Kt, m_Q
-double dS[PARAMS] = {.02,.25,.5,0.2};
-double  S[PARAMS] = {.07,.50,2.,1.3};
+double dS[PARAMS] = {.02,.25,1.,0.0};
+double  S[PARAMS] = {.07,.50,2.,0.0};
 
 double R_nu(double E, void *params) {
   double Fc, temp, prob, res=.0,
@@ -200,9 +200,9 @@ void R_limits(double E,
 
 int main() {
   //channel(1); // gg - gg
-  //channel(2); // qg - qg
+  channel(2); // qg - qg
   //channel(4); // gg - qq
-  channel(5); // qq - QQ
+  //channel(5); // qq - QQ
   double Fc;
   printf("IRREPS = %d\n", IRREPS );
 
@@ -224,8 +224,8 @@ int main() {
   r_scan_E(dsig_1,phi_SP,"out/Rnu_prompt_scaling3_");
   g = 3.6;
   r_scan_E(dsig_1,phi_SP,"out/Rnu_prompt_scaling4_");//*/
-  //g = 3.0;
-  //r_errors(g,"out/Rnu_uncertainty_scaling_");
+  //g = 2.8;
+  //r_errors(g,"out/Rnu_uncertainty2_scaling_");
 
   return 0;
 }
